@@ -1,0 +1,202 @@
+@import "@fontsource/titillium-web/400.css";
+@import "@fontsource/titillium-web/600.css";
+@import "@fontsource/titillium-web/700.css";
+@import "@fontsource/titillium-web/900.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+/* Official Formula 1 Typefaces */
+@font-face {
+  font-family: 'Formula1';
+  src: url('/fonts/formula1/Formula1-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula1';
+  src: url('/fonts/formula1/Formula1-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula1';
+  src: url('/fonts/formula1/Formula1-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula1';
+  src: url('/fonts/formula1/Formula1-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula1Wide';
+  src: url('/fonts/formula1/Formula1-Wide.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Formula1Digits';
+  src: url('/fonts/formula1/Formula1-Year.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Surfaces (dark only - widened luminance ladder) */
+  --surface-0: #0b0b10;
+  --surface-1: #15151e;
+  --surface-2: #1d1d28;
+  --surface-3: #272734;
+  --surface-4: #323244;
+  --border: #2c2c3a;
+  --border-hi: #444458;
+  --border-strong: #46465c;
+
+  /* Canvas and Track Elevation Tokens */
+  --track-asphalt: #2a2b38;
+  --track-edge: #5e637a;
+  --track-glow: rgba(94, 99, 122, 0.25);
+  --track-centerline: #3e4152;
+  --drs-band: rgba(0, 210, 106, 0.35);
+  --drs-band-active: #00ff7f;
+  --grid-dot: rgba(255, 255, 255, 0.035);
+  --car-halo: rgba(255, 255, 255, 0.85);
+  --label-bg: rgba(18, 18, 26, 0.88);
+
+  /* Text */
+  --text-1: #ffffff;
+  --text-2: #c4c4cf;
+  --text-3: #9494a0;
+  --text-disabled: #5c5c6a;
+
+  /* Accent */
+  --accent: #e10600;
+  --accent-bright: #ff1801;
+  --accent-hover: #f5201b;
+  --accent-soft: rgba(225, 6, 0, 0.16);
+  --accent-glow: rgba(225, 6, 0, 0.35);
+  --focus-ring: #ffffff;
+
+  /* Semantic */
+  --success: #00d26a;
+  --warning: #ffd600;
+  --danger: #ff4d4f;
+  --best: #b138dd;
+  --insight: #a855f7;
+  --insight-glow: rgba(168, 85, 247, 0.25);
+
+  /* Track status */
+  --flag-green: #2ecc71;
+  --flag-yellow: #ffd700;
+  --flag-red: #e74c3c;
+  --flag-sc: #ffa500;
+  --flag-vsc: #c8823a;
+
+  /* Tyre compounds */
+  --tyre-soft: #e8002d;
+  --tyre-medium: #fff200;
+  --tyre-hard: #cacaca;
+  --tyre-inter: #39b54a;
+  --tyre-wet: #0067ff;
+
+  /* Spacing (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* Radius */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  /* Typography */
+  --font-display: 'Formula1', 'Titillium Web', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-f1-wide: 'Formula1Wide', 'Formula1', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --fs-display: 32px;
+  --lh-display: 36px;
+  --fs-title: 20px;
+  --lh-title: 28px;
+  --fs-body: 14px;
+  --lh-body: 20px;
+  --fs-small: 12px;
+  --lh-small: 16px;
+  --fs-micro: 10px;
+  --lh-micro: 12px;
+  --fs-tower-code: 15px;
+  --fs-tower-gap: 13px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Density specific */
+  --row-height: 32px;
+}
+
+html[data-density="compact"] {
+  --row-height: 26px;
+  --fs-body: 13px;
+  --fs-small: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: #46465c;
+    --border-hi: #64647c;
+    --border-strong: #787894;
+    --text-3: #b0b0bc;
+    --focus-ring: #ffffff;
+  }
+
+  *:focus-visible {
+    outline-width: 3px !important;
+  }
+}
+
+.panel-focus-highlight {
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+.panel-focus-highlight:focus-within,
+.panel-focus-highlight:focus {
+  border-color: var(--border-strong);
+}
+

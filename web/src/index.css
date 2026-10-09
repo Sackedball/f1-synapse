@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import "./design/tokens.css";
+
+@theme {
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-glow: var(--accent-glow);
+  --color-focus-ring: var(--focus-ring);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-best: var(--best);
+  --color-insight: var(--insight);
+  --color-insight-glow: var(--insight-glow);
+
+  --color-flag-green: var(--flag-green);
+  --color-flag-yellow: var(--flag-yellow);
+  --color-flag-red: var(--flag-red);
+  --color-flag-sc: var(--flag-sc);
+  --color-flag-vsc: var(--flag-vsc);
+
+  --color-tyre-soft: var(--tyre-soft);
+  --color-tyre-medium: var(--tyre-medium);
+  --color-tyre-hard: var(--tyre-hard);
+  --color-tyre-inter: var(--tyre-inter);
+  --color-tyre-wet: var(--tyre-wet);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--surface-0);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.carbon-pattern {
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 50%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.008) 2px,
+      rgba(255,255,255,0.008) 4px
+    );
+}

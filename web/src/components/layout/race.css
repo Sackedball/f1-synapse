@@ -1,0 +1,44 @@
+/* ───── entrance choreography (runs when the session finishes loading) ───── */
+.ws-down { animation: wsDown .9s var(--ease-expo) both; }
+.ws-left { animation: wsLeft 1s var(--ease-expo) .12s both; }
+.ws-right { animation: wsRight 1s var(--ease-expo) .22s both; }
+.ws-up { animation: wsUp .9s var(--ease-expo) .3s both; }
+.ws-fade { animation: wsFade 1.4s var(--ease-out) .05s both; }
+@keyframes wsDown { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes wsLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wsRight { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wsUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes wsFade { from { opacity: 0; filter: blur(8px); } to { opacity: 1; filter: none; } }
+
+/* hairline that sweeps across a panel's edge when it takes focus */
+.scan { position: relative; }
+.scan::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-bright), transparent); transform: scaleX(0); transition: transform .8s var(--ease-expo); pointer-events: none; z-index: 5; }
+.scan:focus-within::after, .scan:hover::after { transform: scaleX(1); }
+
+/* ───── timing tower ───── */
+.tower-row { position: relative; }
+.tower-row::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--team) 38%, transparent), transparent 70%); opacity: 0; transform: translateX(-30%); transition: opacity .35s, transform .6s var(--ease-expo); pointer-events: none; }
+.tower-row:hover::before, .tower-row[aria-selected='true']::before { opacity: 1; transform: none; }
+.tower-row[data-flash='up'] { animation: flashUp 1.4s var(--ease-out); }
+.tower-row[data-flash='down'] { animation: flashDown 1.4s var(--ease-out); }
+@keyframes flashUp { 0% { box-shadow: inset 0 0 0 100px rgba(0,210,106,.35); } 100% { box-shadow: inset 0 0 0 100px rgba(0,210,106,0); } }
+@keyframes flashDown { 0% { box-shadow: inset 0 0 0 100px rgba(255,77,79,.32); } 100% { box-shadow: inset 0 0 0 100px rgba(255,77,79,0); } }
+
+/* ───── race strip flag ───── */
+.flag-pop { display: inline-flex; animation: flagPop .7s cubic-bezier(.34,1.56,.64,1); }
+@keyframes flagPop { 0% { transform: scale(.4) rotate(-6deg); filter: brightness(2.4); } 100% { transform: none; filter: none; } }
+
+/* ───── transport play ───── */
+.play-btn { position: relative; }
+.play-btn[data-playing='true']::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 1px solid var(--accent-bright); animation: ping 1.8s var(--ease-out) infinite; pointer-events: none; }
+@keyframes ping { from { transform: scale(1); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
+
+/* ───── formation loader ───── */
+.formation { background: #07070a; display: grid; place-items: center; }
+.formation-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, 1fr); align-content: center; gap: 22px 0; padding: 0 12vw; opacity: .9; transform: perspective(900px) rotateX(58deg) scale(1.5) translateY(-6%); }
+.formation-grid i { height: 38px; border: 1px solid rgba(236,232,223,.18); border-left: 5px solid rgba(236,232,223,.18); margin-left: calc(var(--row) * 18%); width: 52%; animation: slot 2.4s var(--ease-expo) infinite; animation-delay: calc(var(--i) * 110ms); }
+@keyframes slot { 0%, 100% { border-color: rgba(236,232,223,.14); background: transparent; } 20%, 45% { border-color: var(--accent-bright); background: rgba(225,6,0,.28); box-shadow: 0 0 36px var(--accent-glow); } }
+.formation-copy { position: relative; z-index: 2; padding: 0 var(--pad, 5vw); mix-blend-mode: difference; }
+.formation-k { font: 600 11px var(--font-mono); letter-spacing: .3em; opacity: .7; margin-bottom: 18px; }
+.formation h1 { font: 900 clamp(60px, 13vw, 220px)/.82 var(--font-display); letter-spacing: -.05em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .ws-down, .ws-left, .ws-right, .ws-up, .ws-fade, .flag-pop, .tower-row[data-flash], .formation-grid i, .play-btn::after { animation: none !important; } }

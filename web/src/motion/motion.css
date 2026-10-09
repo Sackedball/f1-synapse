@@ -1,0 +1,65 @@
+@import './f1.css';
+:root {
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.7, 0, 0.1, 1);
+}
+
+/* ───────── Cursor ───────── */
+html.has-cursor, html.has-cursor * { cursor: none !important; }
+.cur-dot, .cur-ring { position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none; will-change: transform; }
+.cur-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: var(--accent-bright); border-radius: 50%; mix-blend-mode: difference; }
+.cur-ring {
+  width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.55); display: grid; place-items: center;
+  transition: width .45s var(--ease-expo), height .45s var(--ease-expo), margin .45s var(--ease-expo), background .3s, border-color .3s;
+}
+.cur-ring[data-mode='link'] { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--accent-bright); background: rgba(225,6,0,.12); }
+.cur-ring[data-mode='view'] { width: 104px; height: 104px; margin: -52px 0 0 -52px; background: var(--accent); border-color: var(--accent); }
+.cur-ring[data-mode='hide'] { width: 0; height: 0; opacity: 0; }
+.cur-label { font: 700 10px/1 var(--font-mono); letter-spacing: .14em; color: #fff; white-space: nowrap; }
+
+/* ───────── Split type ───────── */
+.split { display: inline-block; }
+.split-mask { display: inline-block; overflow: hidden; vertical-align: top; padding: .06em 0; margin: -.06em 0; }
+.split-char { display: inline-block; transform: translateY(112%) rotate(6deg); transform-origin: 0 100%; transition: transform 1s var(--ease-expo); }
+.split-in .split-char { transform: none; }
+
+/* ───────── Intro ───────── */
+.intro { position: fixed; inset: 0; z-index: 10000; pointer-events: all; }
+.intro-half { position: absolute; inset: 0; background: #050507; transition: transform 1s var(--ease-snap); }
+.intro-a { clip-path: polygon(0 0, 100% 0, 0 100%); }
+.intro-b { clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.intro-open .intro-a { transform: translate(-105%, -105%); }
+.intro-open .intro-b { transform: translate(105%, 105%); }
+.intro-body { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 28px; }
+.intro-lights { display: flex; gap: 14px; }
+.intro-lights i { width: 34px; height: 34px; border-radius: 50%; background: #17171d; box-shadow: inset 0 0 0 2px #23232c; transition: background .08s, box-shadow .08s; }
+.intro-lights i.on { background: var(--accent-bright); box-shadow: 0 0 40px 6px var(--accent-glow), inset 0 0 0 2px #ff6a5e; }
+.intro-line { width: min(80vw, 760px); overflow: visible; }
+.intro-ghost { fill: none; stroke: #20202a; stroke-width: 10; stroke-linecap: round; }
+.intro-draw { fill: none; stroke: var(--paper); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 8px rgba(255,255,255,.4)); }
+.intro-num { font: 900 clamp(72px, 16vw, 200px)/.8 var(--font-display); color: var(--paper); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.intro-tag { font: 500 11px var(--font-mono); letter-spacing: .3em; color: var(--text-3); }
+
+/* ───────── Curtain ───────── */
+.curtain { position: fixed; inset: 0; z-index: 9000; display: flex; pointer-events: none; }
+.curtain i { flex: 1; background: var(--accent); transform: scaleY(0) skewX(-8deg); transform-origin: 50% 100%; margin: 0 -2px; }
+.curtain i:nth-child(even) { background: #0a0a0f; }
+.curtain-in { pointer-events: all; }
+.curtain-in i { transform: scaleY(1) skewX(-8deg); transition: transform .62s var(--ease-snap); transition-delay: calc(var(--i) * 55ms); }
+.curtain-out i { transform: scaleY(0) skewX(-8deg); transform-origin: 50% 0; transition: transform .7s var(--ease-snap); transition-delay: calc((5 - var(--i)) * 45ms); }
+.curtain-label { position: absolute; left: 4vw; bottom: 5vh; font: 900 clamp(40px, 9vw, 140px)/.85 var(--font-display); color: var(--paper); text-transform: uppercase; letter-spacing: -.03em; opacity: 0; transform: translateX(-40px); transition: opacity .3s, transform .6s var(--ease-expo); }
+.curtain-in .curtain-label { opacity: 1; transform: none; transition-delay: .35s; }
+
+/* ───────── Magnetic ───────── */
+[data-magnetic] { will-change: transform; }
+[data-magnetic-inner] { display: inline-flex; align-items: center; gap: 8px; will-change: transform; }
+
+/* ───────── Reduced motion ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .split-char { transform: none !important; transition: none !important; }
+  .intro, .curtain, .cur-ring, .cur-dot { display: none !important; }
+}
+
+.intro-kerb { width: min(80vw, 760px); height: 12px; clip-path: polygon(0 0, 100% 0, calc(100% - 24px) 100%, 0 100%); }
+.intro-num { font-style: italic; }

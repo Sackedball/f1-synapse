@@ -1,0 +1,10 @@
+/* dock reveal: a hard left-to-right wipe, panels then rise in */
+.an-wipe { animation: anWipe 1.1s var(--ease-snap) .15s both; }
+@keyframes anWipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.dockview-theme-f1 .dv-groupview { animation: anPanel .8s var(--ease-expo) .6s both; }
+@keyframes anPanel { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.dockview-theme-f1 .dockview-tab { position: relative; }
+.dockview-theme-f1 .dockview-tab::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent-bright); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-expo); }
+.dockview-theme-f1 .dockview-tab:hover::after, .dockview-theme-f1 .dockview-tab.active-tab::after { transform: scaleX(1); }
+.dockview-theme-f1 .dv-sash:hover, .dockview-theme-f1 .dv-sash.active { box-shadow: 0 0 18px var(--accent-glow); transition: box-shadow .3s; }
+@media (prefers-reduced-motion: reduce) { .an-wipe, .dockview-theme-f1 .dv-groupview { animation: none; } }

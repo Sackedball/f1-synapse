@@ -1,0 +1,11 @@
+.trace-loader { background: #07070a; color: var(--paper); display: grid; align-items: end; }
+.trace-svg { position: absolute; inset: 12% 0 auto 0; width: 100%; height: 62%; }
+.trace-p { fill: none; stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 1; animation: tdraw 2.6s var(--ease-expo) infinite; }
+.trace-p0 { stroke: var(--accent-bright); } .trace-p1 { stroke: var(--paper); } .trace-p2 { stroke: #00d26a; } .trace-p3 { stroke: var(--best); }
+@keyframes tdraw { 0% { stroke-dashoffset: 1; opacity: 1; } 65% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.trace-scan { position: absolute; top: 0; bottom: 0; width: 2px; background: linear-gradient(transparent, var(--accent-bright), transparent); box-shadow: 0 0 40px 6px var(--accent-glow); animation: tscan 2.6s var(--ease-expo) infinite; }
+@keyframes tscan { from { left: 0; } 65%, to { left: 100%; } }
+.trace-copy { position: relative; padding: 0 5vw 8vh; }
+.trace-k { font: 600 11px var(--font-mono); letter-spacing: .3em; opacity: .6; margin-bottom: 16px; }
+.trace-copy h1 { font: 900 clamp(56px, 12vw, 200px)/.82 var(--font-display); letter-spacing: -.05em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .trace-p, .trace-scan { animation: none; stroke-dashoffset: 0; } }

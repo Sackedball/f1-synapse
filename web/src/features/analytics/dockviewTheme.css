@@ -1,0 +1,41 @@
+/* Dockview Dark Theme Override matching F1 Synapse Design Tokens */
+
+.dockview-theme-f1 {
+  --dv-background-color: var(--surface-0);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-tabs-and-actions-container-background-color: var(--surface-2);
+  --dv-tab-background-color: var(--surface-2);
+  --dv-active-tab-background-color: var(--surface-1);
+  --dv-inactive-tab-background-color: var(--surface-2);
+  --dv-tab-color: var(--text-3);
+  --dv-active-tab-color: var(--text-1);
+  --dv-separator-border: var(--border);
+  --dv-active-sash-color: var(--accent);
+  --dv-drag-over-background-color: rgba(225, 6, 0, 0.15);
+  --dv-drag-over-border-color: var(--accent);
+  height: 100%;
+  width: 100%;
+}
+
+.dockview-theme-f1 .dockview-tab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  border-right: 1px solid var(--border);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dockview-theme-f1 .dockview-tab.active-tab {
+  border-top: 2px solid var(--accent);
+  background-color: var(--surface-1);
+  color: var(--text-1);
+}
+
+.dockview-theme-f1 .dockview-tab:hover:not(.active-tab) {
+  background-color: var(--surface-3);
+  color: var(--text-1);
+}
+
+.dockview-theme-f1 .tabs-and-actions-container {
+  border-bottom: 1px solid var(--border);
+}

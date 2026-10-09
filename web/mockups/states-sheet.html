@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>F1 Synapse — Component States Sheet</title>
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <style>
+    body { overflow: auto; padding: 40px 60px; }
+
+    .sheet-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    .sheet-sub {
+      font-size: 12px;
+      color: var(--text-3);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+    }
+
+    .section {
+      margin-bottom: 48px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 140px);
+      gap: 12px;
+    }
+    .swatch {
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .swatch-color {
+      height: 48px;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px 8px;
+    }
+    .swatch-info {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--r-md) var(--r-md);
+      padding: 8px;
+    }
+    .swatch-name { font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+    .swatch-hex { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+
+    .type-sample {
+      margin-bottom: 12px;
+    }
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      margin-bottom: 8px;
+    }
+    .type-token {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-3);
+      min-width: 100px;
+    }
+
+    .component-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .component-label {
+      font-size: 10px;
+      color: var(--text-3);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      min-width: 80px;
+    }
+
+    .btn-demo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--r-md);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .btn-demo.default { background: var(--surface-3); color: var(--text-1); }
+    .btn-demo.hover { background: var(--surface-4); color: var(--text-1); border-color: var(--border-strong); }
+    .btn-demo.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-demo.primary-hover { background: var(--accent-hover); color: #fff; border-color: var(--accent-hover); }
+    .btn-demo.disabled { background: var(--surface-3); color: var(--text-disabled); opacity: 0.5; }
+    .btn-demo.ghost { background: transparent; color: var(--text-2); border-color: transparent; }
+    .btn-demo.ghost:hover { background: rgba(255,255,255,0.04); }
+
+    .timing-sample {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      margin-right: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sheet-title">F1 SYNAPSE — <span style="color:var(--accent);">DESIGN STATES</span></div>
+  <div class="sheet-sub">Component inventory · All states · Design token reference</div>
+
+  <!-- ═══ COLOURS ═══ -->
+  <div class="section">
+    <div class="section-title">COLOUR PALETTE</div>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface-0);border:1px solid var(--border);"></div><div class="swatch-info"><div class="swatch-name">Surface 0</div><div class="swatch-hex">#08080d</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface-1);"></div><div class="swatch-info"><div class="swatch-name">Surface 1</div><div class="swatch-hex">#0e0e14</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface-2);"></div><div class="swatch-info"><div class="swatch-name">Surface 2</div><div class="swatch-hex">#15151e</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface-3);"></div><div class="swatch-info"><div class="swatch-name">Surface 3</div><div class="swatch-hex">#1c1c28</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--accent);"></div><div class="swatch-info"><div class="swatch-name">Accent (F1 Red)</div><div class="swatch-hex">#e10600</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--success);"></div><div class="swatch-info"><div class="swatch-name">Success</div><div class="swatch-hex">#00d26a</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--warning);"></div><div class="swatch-info"><div class="swatch-name">Warning</div><div class="swatch-hex">#ffd600</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--danger);"></div><div class="swatch-info"><div class="swatch-name">Danger</div><div class="swatch-hex">#ff4d4f</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--best);"></div><div class="swatch-info"><div class="swatch-name">Best (Timing Purple)</div><div class="swatch-hex">#b138dd</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--insight);"></div><div class="swatch-info"><div class="swatch-name">Insight (ML/AI)</div><div class="swatch-hex">#2dd4bf</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ TYRES ═══ -->
+  <div class="section">
+    <div class="section-title">TYRE BADGES</div>
+    <div class="component-row">
+      <div class="component-label">Compounds</div>
+      <div class="lb-tyre soft" style="width:32px;height:32px;font-size:14px;">S</div>
+      <div class="lb-tyre medium" style="width:32px;height:32px;font-size:14px;">M</div>
+      <div class="lb-tyre hard" style="width:32px;height:32px;font-size:14px;">H</div>
+      <div class="lb-tyre inter" style="width:32px;height:32px;font-size:14px;">I</div>
+      <div class="lb-tyre wet" style="width:32px;height:32px;font-size:14px;">W</div>
+    </div>
+    <div class="component-row">
+      <div class="component-label">With life</div>
+      <div class="lb-tyre soft" style="width:32px;height:32px;font-size:14px;position:relative;">S<span class="lb-tyre-life" style="font-size:9px;">2</span></div>
+      <div class="lb-tyre medium" style="width:32px;height:32px;font-size:14px;position:relative;">M<span class="lb-tyre-life" style="font-size:9px;">14</span></div>
+      <div class="lb-tyre hard" style="width:32px;height:32px;font-size:14px;position:relative;">H<span class="lb-tyre-life" style="font-size:9px;">28</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ FLAGS ═══ -->
+  <div class="section">
+    <div class="section-title">FLAG PILLS</div>
+    <div class="component-row">
+      <div class="flag-pill green">● TRACK CLEAR</div>
+      <div class="flag-pill yellow">● YELLOW FLAG</div>
+      <div class="flag-pill sc">● SAFETY CAR</div>
+      <div class="flag-pill red">● RED FLAG — SESSION SUSPENDED</div>
+    </div>
+  </div>
+
+  <!-- ═══ BUTTONS ═══ -->
+  <div class="section">
+    <div class="section-title">BUTTONS</div>
+    <div class="component-row">
+      <div class="component-label">Default</div>
+      <div class="btn-demo default">Button</div>
+      <div class="btn-demo hover">Hover</div>
+      <div class="btn-demo disabled">Disabled</div>
+    </div>
+    <div class="component-row">
+      <div class="component-label">Primary</div>
+      <div class="btn-demo primary">Primary</div>
+      <div class="btn-demo primary-hover">Hover</div>
+    </div>
+    <div class="component-row">
+      <div class="component-label">Ghost</div>
+      <div class="btn-demo ghost">Ghost</div>
+    </div>
+  </div>
+
+  <!-- ═══ TIMING COLOURS ═══ -->
+  <div class="section">
+    <div class="section-title">TIMING COLOURS</div>
+    <div class="component-row">
+      <span class="timing-sample text-best">1:28.197</span>
+      <span style="font-size:11px;color:var(--text-3);">Overall best (purple)</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample text-success">1:28.440</span>
+      <span style="font-size:11px;color:var(--text-3);">Personal best (green)</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample" style="color:var(--text-1);">1:29.012</span>
+      <span style="font-size:11px;color:var(--text-3);">Normal</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample text-warning">1:30.456</span>
+      <span style="font-size:11px;color:var(--text-3);">Slower / caution</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample text-danger">+1.234</span>
+      <span style="font-size:11px;color:var(--text-3);">Slower delta</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample text-success">−0.456</span>
+      <span style="font-size:11px;color:var(--text-3);">Faster delta</span>
+    </div>
+    <div class="component-row">
+      <span class="timing-sample text-insight">est. 32%</span>
+      <span style="font-size:11px;color:var(--text-3);">ML / estimated value</span>
+    </div>
+  </div>
+
+  <!-- ═══ STATUS BADGES ═══ -->
+  <div class="section">
+    <div class="section-title">STATUS BADGES</div>
+    <div class="component-row">
+      <span class="lb-status-badge pit">PIT</span>
+      <span class="lb-status-badge out">OUT</span>
+      <div class="lb-drs on" style="display:inline-block;"></div><span style="font-size:11px;color:var(--text-3);margin-left:-4px;">DRS On</span>
+      <div class="lb-drs off" style="display:inline-block;"></div><span style="font-size:11px;color:var(--text-3);margin-left:-4px;">DRS Off</span>
+    </div>
+  </div>
+
+  <!-- ═══ ML INSIGHT CARD ═══ -->
+  <div class="section">
+    <div class="section-title">ML INSIGHT CARD</div>
+    <div style="max-width:340px;">
+      <div class="ml-card">
+        <div class="ml-card-header">◆ OVERTAKE PROBABILITY</div>
+        <div class="flex items-center justify-between">
+          <div class="ml-value">32<span style="font-size:18px;">%</span></div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);text-align:right;line-height:1.8;">
+            <div>Δspd <span class="text-success">+12 km/h</span></div>
+            <div>DRS <span class="text-success">active</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LEADERBOARD ROW ═══ -->
+  <div class="section">
+    <div class="section-title">LEADERBOARD ROW STATES</div>
+    <div style="max-width:310px; border: 1px solid var(--border); border-radius: var(--r-md); overflow:hidden;">
+      <div class="lb-row">
+        <div class="lb-pos">1</div>
+        <div class="lb-team-bar" style="background:#0600ef;"></div>
+        <div class="lb-code">VER</div>
+        <div class="lb-name">VERSTAPPEN</div>
+        <div class="lb-gap leader">LEADER</div>
+        <div class="lb-drs off"></div>
+        <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+      </div>
+      <div class="lb-row selected">
+        <div class="lb-pos">2</div>
+        <div class="lb-team-bar" style="background:#ff8000;"></div>
+        <div class="lb-code">NOR</div>
+        <div class="lb-name">NORRIS</div>
+        <div class="lb-gap">+1.234</div>
+        <div class="lb-drs on"></div>
+        <div class="lb-tyre medium">M<span class="lb-tyre-life">14</span></div>
+      </div>
+      <div class="lb-row fastest-lap">
+        <div class="lb-pos">3</div>
+        <div class="lb-team-bar" style="background:#e8002d;"></div>
+        <div class="lb-code">SAI</div>
+        <div class="lb-name">SAINZ</div>
+        <div class="lb-gap">+3.891</div>
+        <div class="lb-drs off"></div>
+        <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-pos" style="color:var(--danger);">16</div>
+        <div class="lb-team-bar" style="background:#b6babd;"></div>
+        <div class="lb-code" style="opacity:0.5;">MAG</div>
+        <div class="lb-name" style="opacity:0.5;">MAGNUSSEN <span class="lb-status-badge out">OUT</span></div>
+        <div class="lb-gap" style="opacity:0.4;">DNF</div>
+        <div class="lb-drs off"></div>
+        <div class="lb-tyre hard" style="opacity:0.3;">H</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TYPOGRAPHY ═══ -->
+  <div class="section">
+    <div class="section-title">TYPOGRAPHY SCALE</div>
+    <div class="type-sample">
+      <div class="type-row">
+        <span class="type-token">--fs-display</span>
+        <span style="font-family:var(--font-display);font-weight:900;font-size:32px;line-height:36px;">Lap 45 of 53</span>
+      </div>
+      <div class="type-row">
+        <span class="type-token">--fs-title</span>
+        <span style="font-family:var(--font-display);font-weight:700;font-size:20px;line-height:28px;">Leaderboard</span>
+      </div>
+      <div class="type-row">
+        <span class="type-token">--fs-body</span>
+        <span style="font-size:14px;line-height:20px;">Lando Norris — McLaren</span>
+      </div>
+      <div class="type-row">
+        <span class="type-token">--fs-small</span>
+        <span style="font-size:12px;line-height:16px;font-weight:500;">Throttle: 92% · Brake: 0%</span>
+      </div>
+      <div class="type-row">
+        <span class="type-token">--fs-micro</span>
+        <span style="font-size:10px;line-height:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">DRIVER FOCUS · TYRE STATUS</span>
+      </div>
+      <div class="type-row">
+        <span class="type-token">Monospace</span>
+        <span style="font-family:var(--font-mono);font-size:14px;font-variant-numeric:tabular-nums;">1:28.197 · +0.812s · 312 km/h</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

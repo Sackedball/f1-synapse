@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>F1 Synapse — Race Workspace</title>
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <style>
+    /* Track SVG placeholder */
+    .track-svg {
+      width: 500px; height: 340px;
+      opacity: 0.08;
+    }
+    .track-svg path {
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .canvas-lap-overlay {
+      position: absolute;
+      top: 20px; left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 64px;
+      color: rgba(255,255,255,0.04);
+      letter-spacing: 8px;
+      pointer-events: none;
+      user-select: none;
+    }
+    .position-change {
+      font-size: 9px;
+      font-weight: 700;
+      margin-left: 3px;
+    }
+    .position-change.up { color: var(--success); }
+    .position-change.down { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="workspace">
+
+    <!-- ═══════ HEADER ═══════ -->
+    <header class="header">
+      <div class="flex items-center gap-4">
+        <div class="brand">
+          <span class="f1">F1</span>
+          <span class="synapse">SYNAPSE</span>
+        </div>
+        <div class="brand-divider"></div>
+        <div class="session-badge">
+          <div class="flag-dot"></div>
+          <span>SUZUKA 2024 · ROUND 4 · RACE</span>
+        </div>
+        <div class="flag-pill green">● TRACK CLEAR</div>
+      </div>
+      <div class="header-right">
+        <div class="insight-chip">◆ INSIGHT ENGINE</div>
+        <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-3);">1920 × 1080</div>
+      </div>
+    </header>
+
+    <!-- ═══════ TOWER (LEADERBOARD) ═══════ -->
+    <aside class="tower carbon">
+      <div class="tower-header">
+        <div class="lap-counter">
+          <span class="current">45</span><span class="slash">/</span><span class="total">53</span>
+        </div>
+        <div class="flag-pill green" style="font-size:9px;">RACE</div>
+      </div>
+      <div class="tower-body">
+
+        <!-- P1 — VER -->
+        <div class="lb-row fastest-lap">
+          <div class="lb-pos">1</div>
+          <div class="lb-team-bar" style="background:#0600ef;"></div>
+          <div class="lb-code">VER</div>
+          <div class="lb-name">VERSTAPPEN</div>
+          <div class="lb-gap leader">LEADER</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+        </div>
+
+        <!-- P2 — NOR (selected) -->
+        <div class="lb-row selected">
+          <div class="lb-pos">2</div>
+          <div class="lb-team-bar" style="background:#ff8000;"></div>
+          <div class="lb-code">NOR</div>
+          <div class="lb-name">NORRIS</div>
+          <div class="lb-gap">+1.234</div>
+          <div class="lb-drs on"></div>
+          <div class="lb-tyre medium">M<span class="lb-tyre-life">14</span></div>
+        </div>
+
+        <!-- P3 — SAI -->
+        <div class="lb-row">
+          <div class="lb-pos">3</div>
+          <div class="lb-team-bar" style="background:#e8002d;"></div>
+          <div class="lb-code">SAI</div>
+          <div class="lb-name">SAINZ</div>
+          <div class="lb-gap">+3.891</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+        </div>
+
+        <!-- P4 — LEC -->
+        <div class="lb-row">
+          <div class="lb-pos">4</div>
+          <div class="lb-team-bar" style="background:#e8002d;"></div>
+          <div class="lb-code">LEC</div>
+          <div class="lb-name">LECLERC</div>
+          <div class="lb-gap">+5.122</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+        </div>
+
+        <!-- P5 — PIA -->
+        <div class="lb-row">
+          <div class="lb-pos">5</div>
+          <div class="lb-team-bar" style="background:#ff8000;"></div>
+          <div class="lb-code">PIA</div>
+          <div class="lb-name">PIASTRI<span class="position-change up">▲1</span></div>
+          <div class="lb-gap">+8.450</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre medium">M<span class="lb-tyre-life">14</span></div>
+        </div>
+
+        <!-- P6 — RUS -->
+        <div class="lb-row">
+          <div class="lb-pos">6</div>
+          <div class="lb-team-bar" style="background:#27f4d2;"></div>
+          <div class="lb-code">RUS</div>
+          <div class="lb-name">RUSSELL<span class="position-change down">▼1</span></div>
+          <div class="lb-gap">+9.773</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">24</span></div>
+        </div>
+
+        <!-- P7 — PER -->
+        <div class="lb-row">
+          <div class="lb-pos">7</div>
+          <div class="lb-team-bar" style="background:#0600ef;"></div>
+          <div class="lb-code">PER</div>
+          <div class="lb-name">PEREZ</div>
+          <div class="lb-gap">+12.338</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">28</span></div>
+        </div>
+
+        <!-- P8 — ALO -->
+        <div class="lb-row">
+          <div class="lb-pos">8</div>
+          <div class="lb-team-bar" style="background:#00665f;"></div>
+          <div class="lb-code">ALO</div>
+          <div class="lb-name">ALONSO</div>
+          <div class="lb-gap">+18.901</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">26</span></div>
+        </div>
+
+        <!-- P9 — HAM -->
+        <div class="lb-row">
+          <div class="lb-pos">9</div>
+          <div class="lb-team-bar" style="background:#27f4d2;"></div>
+          <div class="lb-code">HAM</div>
+          <div class="lb-name">HAMILTON</div>
+          <div class="lb-gap">+21.045</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre medium">M<span class="lb-tyre-life">6</span></div>
+        </div>
+
+        <!-- P10 — STR -->
+        <div class="lb-row">
+          <div class="lb-pos">10</div>
+          <div class="lb-team-bar" style="background:#00665f;"></div>
+          <div class="lb-code">STR</div>
+          <div class="lb-name">STROLL</div>
+          <div class="lb-gap">+24.667</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">26</span></div>
+        </div>
+
+        <!-- P11 — TSU -->
+        <div class="lb-row">
+          <div class="lb-pos">11</div>
+          <div class="lb-team-bar" style="background:#364aa9;"></div>
+          <div class="lb-code">TSU</div>
+          <div class="lb-name">TSUNODA</div>
+          <div class="lb-gap">+28.112</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre medium">M<span class="lb-tyre-life">8</span></div>
+        </div>
+
+        <!-- P12 — HUL -->
+        <div class="lb-row">
+          <div class="lb-pos">12</div>
+          <div class="lb-team-bar" style="background:#b6babd;"></div>
+          <div class="lb-code">HUL</div>
+          <div class="lb-name">HULKENBERG</div>
+          <div class="lb-gap">+31.890</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">22</span></div>
+        </div>
+
+        <!-- P13 — GAS (PIT) -->
+        <div class="lb-row">
+          <div class="lb-pos">13</div>
+          <div class="lb-team-bar" style="background:#ff87bc;"></div>
+          <div class="lb-code">GAS</div>
+          <div class="lb-name">GASLY <span class="lb-status-badge pit">PIT</span></div>
+          <div class="lb-gap">+38.224</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre soft">S<span class="lb-tyre-life">0</span></div>
+        </div>
+
+        <!-- P14 — OCO -->
+        <div class="lb-row">
+          <div class="lb-pos">14</div>
+          <div class="lb-team-bar" style="background:#ff87bc;"></div>
+          <div class="lb-code">OCO</div>
+          <div class="lb-name">OCON</div>
+          <div class="lb-gap">+42.556</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">20</span></div>
+        </div>
+
+        <!-- P15 — BOT -->
+        <div class="lb-row">
+          <div class="lb-pos">15</div>
+          <div class="lb-team-bar" style="background:#00e700;"></div>
+          <div class="lb-code">BOT</div>
+          <div class="lb-name">BOTTAS</div>
+          <div class="lb-gap">+48.901</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard">H<span class="lb-tyre-life">18</span></div>
+        </div>
+
+        <!-- P16 — MAG (OUT) -->
+        <div class="lb-row">
+          <div class="lb-pos" style="color:var(--danger);">16</div>
+          <div class="lb-team-bar" style="background:#b6babd;"></div>
+          <div class="lb-code" style="opacity:0.5;">MAG</div>
+          <div class="lb-name" style="opacity:0.5;">MAGNUSSEN <span class="lb-status-badge out">OUT</span></div>
+          <div class="lb-gap" style="opacity:0.4;">DNF</div>
+          <div class="lb-drs off"></div>
+          <div class="lb-tyre hard" style="opacity:0.3;">H</div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ═══════ CANVAS ═══════ -->
+    <main class="canvas">
+      <div class="canvas-lap-overlay">LAP 45</div>
+      <div class="canvas-placeholder">
+        <!-- Simplified Suzuka outline SVG -->
+        <svg class="track-svg" viewBox="0 0 500 340">
+          <path d="M 100,280 C 60,280 30,250 30,200 C 30,150 60,120 100,120 C 120,120 140,130 150,150 
+                   C 160,170 180,180 200,170 C 220,160 230,140 250,130 C 270,120 290,110 310,120 
+                   C 340,135 350,160 340,190 C 330,220 310,230 280,230 C 260,230 250,220 250,200 
+                   C 250,180 260,170 280,170 C 300,170 310,180 310,200 C 310,220 300,240 280,250 
+                   C 260,260 240,260 220,250 C 200,240 190,220 190,200 C 190,170 200,150 220,140 
+                   C 240,130 260,130 290,140 C 330,155 370,160 400,140 C 430,120 450,80 440,50 
+                   C 430,25 400,20 370,30 C 340,40 320,60 300,80 C 280,100 260,110 240,100 
+                   C 220,90 200,70 180,60 C 160,50 140,50 120,60 C 100,70 90,90 100,110"/>
+        </svg>
+        <div style="font-size:12px; letter-spacing:2px;">SUZUKA INTERNATIONAL RACING COURSE</div>
+      </div>
+    </main>
+
+    <!-- ═══════ CONTEXT PANEL ═══════ -->
+    <aside class="context carbon">
+
+      <!-- Driver Focus -->
+      <div class="context-section">
+        <div class="context-title">DRIVER FOCUS</div>
+        <div class="driver-focus-header">
+          <div class="driver-number" style="color:#ff8000;">4</div>
+          <div>
+            <div class="driver-focus-name">Lando NORRIS</div>
+            <div class="driver-focus-team" style="color:#ff8000;">McLaren</div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <span class="stat-label">Speed</span>
+          <span class="stat-value text-success">312 km/h</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Gear</span>
+          <span class="stat-value">8</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">DRS</span>
+          <span class="stat-value text-success">● OPEN</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Gap to VER</span>
+          <span class="stat-value">+1.234s</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Gap behind</span>
+          <span class="stat-value text-3">SAI +2.657s</span>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="gauge-label">THROTTLE 92%</div>
+          <div class="gauge"><div class="gauge-fill throttle" style="width:92%;"></div></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="gauge-label">BRAKE 0%</div>
+          <div class="gauge"><div class="gauge-fill brake" style="width:0%;"></div></div>
+        </div>
+      </div>
+
+      <!-- Tyre -->
+      <div class="context-section">
+        <div class="context-title">TYRE STATUS</div>
+        <div class="flex items-center gap-3">
+          <div class="lb-tyre medium" style="width:32px;height:32px;font-size:13px;">M</div>
+          <div>
+            <div class="stat-value">14 laps</div>
+            <div style="font-size:11px; color:var(--text-3);">MEDIUM compound</div>
+          </div>
+          <div style="margin-left:auto;">
+            <div class="stat-value text-warning" style="font-size:20px;">68%</div>
+            <div style="font-size:9px; color:var(--text-3); text-align:right;">HEALTH</div>
+          </div>
+        </div>
+        <div style="margin-top:8px; height:4px; background:var(--surface-4); border-radius:var(--r-pill); overflow:hidden;">
+          <div style="width:68%; height:100%; background:linear-gradient(90deg, var(--warning), var(--success)); border-radius:var(--r-pill);"></div>
+        </div>
+      </div>
+
+      <!-- ML Insight -->
+      <div class="context-section">
+        <div class="context-title">ML INSIGHTS</div>
+        <div class="ml-card" style="margin-bottom:10px;">
+          <div class="ml-card-header">◆ OVERTAKE PROBABILITY</div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="ml-value">32<span style="font-size:18px;">%</span></div>
+              <div class="ml-label">NOR → VER · DRS zone active</div>
+            </div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-3); text-align:right;">
+              <div>Δspeed +8 km/h</div>
+              <div>gap 1.2s</div>
+              <div>tyre Δ14 laps</div>
+            </div>
+          </div>
+        </div>
+        <div class="ml-card">
+          <div class="ml-card-header">◆ PIT WINDOW</div>
+          <div class="ml-label">Est. optimal pit in <span class="stat-value text-insight">2 laps</span></div>
+          <div class="ml-label" style="margin-top:4px;">Crossover pace: <span class="mono text-insight">−0.4s/lap</span></div>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="context-section">
+        <div class="context-title">WEATHER</div>
+        <div class="weather-grid">
+          <div class="weather-item">
+            <div class="weather-label">TRACK</div>
+            <div class="weather-val">42.3°C</div>
+          </div>
+          <div class="weather-item">
+            <div class="weather-label">AIR</div>
+            <div class="weather-val">24.1°C</div>
+          </div>
+          <div class="weather-item">
+            <div class="weather-label">HUMIDITY</div>
+            <div class="weather-val">58%</div>
+          </div>
+          <div class="weather-item">
+            <div class="weather-label">WIND</div>
+            <div class="weather-val">12 km/h NNE</div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ═══════ FOOTER / TIMELINE ═══════ -->
+    <footer class="footer">
+      <div class="playback-controls">
+        <button class="ctrl-btn">⏮</button>
+        <button class="ctrl-btn play">▶</button>
+        <button class="ctrl-btn">⏭</button>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-bar">
+          <div class="timeline-progress" style="width:85%;"></div>
+          <div class="timeline-flags">
+            <div class="timeline-flag" style="left:22%; width:3%; background:var(--flag-yellow);"></div>
+            <div class="timeline-flag" style="left:45%; width:5%; background:var(--flag-sc);"></div>
+          </div>
+        </div>
+        <div class="timeline-meta">
+          <span>LAP 1</span>
+          <span>1:23:45.678</span>
+          <span>LAP 53</span>
+        </div>
+      </div>
+
+      <div class="speed-control">
+        <button class="speed-btn">−</button>
+        <div class="speed-value">1.0×</div>
+        <button class="speed-btn">+</button>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>

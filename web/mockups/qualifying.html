@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>F1 Synapse — Qualifying Results</title>
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <style>
+    body { overflow: auto; }
+    .quali-page {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+    }
+    .quali-content {
+      padding: 32px 60px;
+      overflow-y: auto;
+    }
+    .quali-title-bar {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .quali-title-bar h2 {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+    .quali-title-bar .circuit {
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    /* Segment tabs */
+    .q-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+    .q-tab {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1px;
+      padding: 10px 24px;
+      color: var(--text-3);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.12s;
+    }
+    .q-tab:hover { color: var(--text-2); }
+    .q-tab.active { color: var(--text-1); border-bottom-color: var(--accent); }
+
+    /* Results table */
+    .q-table {
+      width: 100%;
+      max-width: 1000px;
+      border-collapse: collapse;
+    }
+    .q-table th {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-strong);
+    }
+    .q-table th.right { text-align: right; }
+    .q-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 13px;
+    }
+    .q-table tr:hover { background: rgba(255,255,255,0.02); }
+    .q-table .pos {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 14px;
+      width: 36px;
+    }
+    .q-table .driver-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .q-table .team-bar-v {
+      width: 3px;
+      height: 20px;
+      border-radius: var(--r-pill);
+    }
+    .q-table .driver-code {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+    .q-table .driver-name {
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    .q-table .team-name {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .q-table .time {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .q-table .time.best { color: var(--best); font-weight: 700; }
+    .q-table .time.pb   { color: var(--success); }
+    .q-table .time.elim { color: var(--text-disabled); }
+    .q-table .time.na   { color: var(--text-disabled); }
+
+    .q-table .delta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .q-table .delta.pos { color: var(--danger); }
+
+    .pole-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(177,56,221,0.1);
+      border: 1px solid rgba(177,56,221,0.25);
+      border-radius: var(--r-pill);
+      padding: 3px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--best);
+    }
+  </style>
+</head>
+<body>
+  <div class="quali-page">
+
+    <header class="header">
+      <div class="flex items-center gap-4">
+        <div class="brand"><span class="f1">F1</span><span class="synapse">SYNAPSE</span></div>
+        <div class="brand-divider"></div>
+        <div style="font-family:var(--font-display); font-weight:700; font-size:14px; letter-spacing:1px;">QUALIFYING</div>
+      </div>
+      <div class="header-right">
+        <div class="session-badge"><span>SUZUKA 2024 · ROUND 4</span></div>
+      </div>
+    </header>
+
+    <div class="quali-content">
+      <div class="quali-title-bar">
+        <h2>QUALIFYING RESULTS</h2>
+        <span class="circuit">Suzuka International Racing Course · 5.807 km</span>
+        <div style="margin-left:auto;">
+          <span class="pole-banner">★ POLE POSITION — VER 1:28.197</span>
+        </div>
+      </div>
+
+      <div class="q-tabs">
+        <div class="q-tab">Q1</div>
+        <div class="q-tab">Q2</div>
+        <div class="q-tab active">Q3</div>
+      </div>
+
+      <table class="q-table">
+        <thead>
+          <tr>
+            <th>POS</th>
+            <th>DRIVER</th>
+            <th>TEAM</th>
+            <th class="right">Q1</th>
+            <th class="right">Q2</th>
+            <th class="right">Q3</th>
+            <th class="right">GAP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pos">1</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#0600ef;"></div><div><div class="driver-code">VER</div><div class="driver-name">Max Verstappen</div></div></div></td>
+            <td class="team-name">Red Bull Racing</td>
+            <td class="time">1:28.866</td>
+            <td class="time pb">1:28.440</td>
+            <td class="time best">1:28.197</td>
+            <td class="delta">—</td>
+          </tr>
+          <tr>
+            <td class="pos">2</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#0600ef;"></div><div><div class="driver-code">PER</div><div class="driver-name">Sergio Perez</div></div></div></td>
+            <td class="team-name">Red Bull Racing</td>
+            <td class="time">1:29.303</td>
+            <td class="time">1:28.752</td>
+            <td class="time">1:28.263</td>
+            <td class="delta pos">+0.066</td>
+          </tr>
+          <tr>
+            <td class="pos">3</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#ff8000;"></div><div><div class="driver-code">NOR</div><div class="driver-name">Lando Norris</div></div></div></td>
+            <td class="team-name">McLaren</td>
+            <td class="time">1:29.536</td>
+            <td class="time">1:28.940</td>
+            <td class="time">1:28.489</td>
+            <td class="delta pos">+0.292</td>
+          </tr>
+          <tr>
+            <td class="pos">4</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#e8002d;"></div><div><div class="driver-code">SAI</div><div class="driver-name">Carlos Sainz</div></div></div></td>
+            <td class="team-name">Ferrari</td>
+            <td class="time">1:29.112</td>
+            <td class="time">1:28.812</td>
+            <td class="time">1:28.501</td>
+            <td class="delta pos">+0.304</td>
+          </tr>
+          <tr>
+            <td class="pos">5</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#e8002d;"></div><div><div class="driver-code">LEC</div><div class="driver-name">Charles Leclerc</div></div></div></td>
+            <td class="team-name">Ferrari</td>
+            <td class="time">1:29.445</td>
+            <td class="time">1:28.900</td>
+            <td class="time">1:28.634</td>
+            <td class="delta pos">+0.437</td>
+          </tr>
+          <tr>
+            <td class="pos">6</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#ff8000;"></div><div><div class="driver-code">PIA</div><div class="driver-name">Oscar Piastri</div></div></div></td>
+            <td class="team-name">McLaren</td>
+            <td class="time">1:29.890</td>
+            <td class="time">1:29.012</td>
+            <td class="time">1:28.741</td>
+            <td class="delta pos">+0.544</td>
+          </tr>
+          <tr>
+            <td class="pos">7</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#27f4d2;"></div><div><div class="driver-code">RUS</div><div class="driver-name">George Russell</div></div></div></td>
+            <td class="team-name">Mercedes</td>
+            <td class="time">1:29.620</td>
+            <td class="time">1:29.100</td>
+            <td class="time">1:28.893</td>
+            <td class="delta pos">+0.696</td>
+          </tr>
+          <tr>
+            <td class="pos">8</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#27f4d2;"></div><div><div class="driver-code">HAM</div><div class="driver-name">Lewis Hamilton</div></div></div></td>
+            <td class="team-name">Mercedes</td>
+            <td class="time">1:29.801</td>
+            <td class="time">1:29.200</td>
+            <td class="time">1:29.012</td>
+            <td class="delta pos">+0.815</td>
+          </tr>
+          <tr>
+            <td class="pos">9</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#00665f;"></div><div><div class="driver-code">ALO</div><div class="driver-name">Fernando Alonso</div></div></div></td>
+            <td class="team-name">Aston Martin</td>
+            <td class="time">1:30.001</td>
+            <td class="time">1:29.400</td>
+            <td class="time">1:29.234</td>
+            <td class="delta pos">+1.037</td>
+          </tr>
+          <tr>
+            <td class="pos">10</td>
+            <td><div class="driver-cell"><div class="team-bar-v" style="background:#364aa9;"></div><div><div class="driver-code">TSU</div><div class="driver-name">Yuki Tsunoda</div></div></div></td>
+            <td class="team-name">RB</td>
+            <td class="time">1:30.123</td>
+            <td class="time">1:29.500</td>
+            <td class="time">1:29.445</td>
+            <td class="delta pos">+1.248</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</body>
+</html>

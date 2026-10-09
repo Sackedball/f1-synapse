@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+venv/
+ENV/
+env/
+.fastf1-cache/
+cache/
+
+# Node / Web
+node_modules/
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+*.tsbuildinfo
+web/*.tsbuildinfo
+
+# Precomputed / Scratch caches
+computed_data/
+scratch/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

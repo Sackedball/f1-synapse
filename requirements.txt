@@ -1,0 +1,14 @@
+fastf1
+pandas
+matplotlib
+numpy>=1.26.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+orjson>=3.9.0
+pydantic>=2.0
+questionary
+rich
+xgboost
+lightgbm
+scikit-learn
+joblib

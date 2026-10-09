@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>F1 Synapse — Analysis Workspace</title>
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <style>
+    body { overflow: auto; }
+    .analysis-page {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+    }
+    .analysis-content {
+      padding: 24px 32px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .analysis-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .analysis-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
+    }
+    .analysis-card h3 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .analysis-card.ml h3 { color: var(--insight); }
+    .analysis-card.ml { border-color: rgba(45,212,191,0.15); }
+
+    /* Fake chart area */
+    .chart-area {
+      height: 240px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 39px, rgba(255,255,255,0.02) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.02) 59px, rgba(255,255,255,0.02) 60px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Fake lap time lines */
+    .chart-line {
+      position: absolute;
+      bottom: 20px; left: 20px; right: 20px;
+      height: 2px;
+      border-radius: 1px;
+    }
+    .chart-dot {
+      position: absolute;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    .legend-swatch {
+      width: 12px; height: 3px;
+      border-radius: 2px;
+    }
+
+    .driver-compare-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .vs-badge {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 11px;
+      color: var(--text-3);
+      background: var(--surface-4);
+      padding: 3px 8px;
+      border-radius: var(--r-sm);
+    }
+    .driver-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 4px 12px 4px 4px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .driver-chip .chip-bar {
+      width: 4px; height: 18px;
+      border-radius: var(--r-pill);
+    }
+
+    /* Minisector map placeholder */
+    .minisector-map {
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      position: relative;
+      overflow: hidden;
+    }
+    .minisector-map svg {
+      width: 300px; opacity: 0.3;
+    }
+    .minisector-map svg path {
+      fill: none; stroke-width: 10; stroke-linecap: round;
+    }
+  </style>
+</head>
+<body>
+  <div class="analysis-page">
+
+    <header class="header">
+      <div class="flex items-center gap-4">
+        <div class="brand"><span class="f1">F1</span><span class="synapse">SYNAPSE</span></div>
+        <div class="brand-divider"></div>
+        <div style="font-family:var(--font-display); font-weight:700; font-size:14px; letter-spacing:1px;">ANALYSIS</div>
+      </div>
+      <div class="header-right">
+        <div class="driver-compare-header">
+          <div class="driver-chip"><div class="chip-bar" style="background:#0600ef;"></div> VER</div>
+          <div class="vs-badge">VS</div>
+          <div class="driver-chip"><div class="chip-bar" style="background:#ff8000;"></div> NOR</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="analysis-content">
+
+      <!-- Lap Time Comparison -->
+      <div class="analysis-card">
+        <h3>📊 LAP TIME COMPARISON</h3>
+        <div class="chart-area">
+          <!-- Simulated chart lines with SVG polylines -->
+          <svg width="100%" height="100%" viewBox="0 0 600 240" preserveAspectRatio="none">
+            <!-- Grid -->
+            <line x1="0" y1="60" x2="600" y2="60" stroke="rgba(255,255,255,0.03)" />
+            <line x1="0" y1="120" x2="600" y2="120" stroke="rgba(255,255,255,0.03)" />
+            <line x1="0" y1="180" x2="600" y2="180" stroke="rgba(255,255,255,0.03)" />
+            <!-- VER line -->
+            <polyline points="20,140 60,135 100,130 140,128 180,132 220,126 260,124 300,122 340,120 380,125 420,118 460,116 500,114 540,115 580,112"
+              fill="none" stroke="#0600ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- NOR line -->
+            <polyline points="20,155 60,148 100,142 140,138 180,140 220,136 260,132 300,128 340,130 380,126 420,124 460,120 500,118 540,117 580,115"
+              fill="none" stroke="#ff8000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- Axis labels -->
+            <text x="10" y="235" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">L1</text>
+            <text x="290" y="235" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">L25</text>
+            <text x="575" y="235" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">L45</text>
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#0600ef;"></div>VER</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff8000;"></div>NOR</div>
+        </div>
+      </div>
+
+      <!-- Speed Trace -->
+      <div class="analysis-card">
+        <h3>⚡ SPEED TRACE OVERLAY</h3>
+        <div class="chart-area">
+          <svg width="100%" height="100%" viewBox="0 0 600 240" preserveAspectRatio="none">
+            <polyline points="20,180 40,60 80,40 120,180 160,190 200,50 240,30 280,170 320,185 360,45 400,35 440,160 480,180 520,55 560,40 580,160"
+              fill="none" stroke="#0600ef" stroke-width="1.5" opacity="0.8" />
+            <polyline points="20,185 40,65 80,45 120,185 160,192 200,55 240,35 280,175 320,188 360,50 400,38 440,165 480,183 520,58 560,44 580,165"
+              fill="none" stroke="#ff8000" stroke-width="1.5" opacity="0.8" />
+            <text x="10" y="15" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">340 km/h</text>
+            <text x="10" y="195" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">80 km/h</text>
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#0600ef;"></div>VER Lap 44</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff8000;"></div>NOR Lap 44</div>
+        </div>
+      </div>
+
+      <!-- Tyre Degradation (ML) -->
+      <div class="analysis-card ml">
+        <h3>◆ TYRE DEGRADATION (ML ESTIMATED)</h3>
+        <div class="chart-area">
+          <svg width="100%" height="100%" viewBox="0 0 600 240" preserveAspectRatio="none">
+            <!-- Degradation curves -->
+            <polyline points="20,30 80,35 140,42 200,55 260,72 320,95 380,125 440,160 500,195 560,215"
+              fill="none" stroke="var(--insight)" stroke-width="2" stroke-dasharray="6,3" opacity="0.7" />
+            <polyline points="20,28 80,30 140,33 200,38 260,45 320,55 380,68 440,85 500,105 560,130"
+              fill="none" stroke="#0600ef" stroke-width="2" opacity="0.6" />
+            <text x="10" y="15" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">100%</text>
+            <text x="10" y="230" fill="var(--text-disabled)" font-size="9" font-family="var(--font-mono)">0%</text>
+            <text x="565" y="210" fill="var(--insight)" font-size="9" font-family="var(--font-mono)">est.</text>
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#0600ef;"></div>VER Hard</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--insight);"></div>NOR Medium (est.)</div>
+        </div>
+      </div>
+
+      <!-- Track Dominance -->
+      <div class="analysis-card">
+        <h3>🗺 TRACK DOMINANCE</h3>
+        <div class="minisector-map">
+          <svg viewBox="0 0 500 340">
+            <!-- Suzuka simplified — colored by dominance -->
+            <path d="M 100,280 C 60,280 30,250 30,200 C 30,150 60,120 100,120 C 120,120 140,130 150,150" stroke="#0600ef" />
+            <path d="M 150,150 C 160,170 180,180 200,170 C 220,160 230,140 250,130" stroke="#ff8000" />
+            <path d="M 250,130 C 270,120 290,110 310,120 C 340,135 350,160 340,190" stroke="#0600ef" />
+            <path d="M 340,190 C 330,220 310,230 280,230 C 260,230 250,220 250,200" stroke="#ff8000" />
+            <path d="M 250,200 C 250,180 260,170 280,170 C 300,170 310,180 310,200" stroke="#0600ef" />
+            <path d="M 310,200 C 310,220 300,240 280,250 C 260,260 240,260 220,250" stroke="#ff8000" />
+            <path d="M 220,250 C 200,240 190,220 190,200 C 190,170 200,150 220,140 C 240,130 260,130 290,140 C 330,155 370,160 400,140 C 430,120 450,80 440,50 C 430,25 400,20 370,30 C 340,40 320,60 300,80 C 280,100 260,110 240,100 C 220,90 200,70 180,60 C 160,50 140,50 120,60 C 100,70 90,90 100,110" stroke="#0600ef" />
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#0600ef;"></div>VER faster</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff8000;"></div>NOR faster</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

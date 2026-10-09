@@ -1,0 +1,75 @@
+/* ═══════════ F1 broadcast graphics language ═══════════
+   Slashed corners, kerb stripes, carbon weave, sector bars, timing-board blocks. */
+:root {
+  --paper: #f4f4f7;
+  --f1-black: #15151e;
+  --c: 14px; /* slash depth */
+  --slash-r: polygon(0 0, 100% 0, calc(100% - var(--c)) 100%, 0 100%);
+  --slash-l: polygon(var(--c) 0, 100% 0, 100% 100%, 0 100%);
+  --slash-both: polygon(var(--c) 0, 100% 0, calc(100% - var(--c)) 100%, 0 100%);
+  --chamfer: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+  --s1: #e10600; --s2: #f4f4f7; --s3: #ffd600;
+}
+.kerb { background: repeating-linear-gradient(135deg, var(--accent) 0 9px, #f4f4f7 9px 18px); }
+.checker { background: repeating-conic-gradient(#f4f4f7 0 25%, #0b0b10 0 50%) 0 0 / 28px 28px; }
+.carbon {
+  background-color: #101016;
+  background-image:
+    linear-gradient(135deg, rgba(255,255,255,.045) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(255,255,255,.045) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(255,255,255,.02) 25%, transparent 25%),
+    linear-gradient(315deg, rgba(255,255,255,.02) 25%, #0000 25%);
+  background-size: 8px 8px; background-position: 4px 0, 4px 0, 0 0, 0 0;
+}
+/* the slash tab: red parallelogram label used everywhere as a "section chip" */
+.tab { display: inline-block; background: var(--accent); color: #fff; font: 800 11px/1 var(--font-display); letter-spacing: .16em; text-transform: uppercase; padding: 9px 22px 9px 14px; clip-path: var(--slash-r); }
+.tab.white { background: var(--paper); color: var(--f1-black); }
+/* sector bar: tiny timing-board indicator */
+.sector { display: inline-flex; gap: 2px; } .sector i { width: 10px; height: 4px; background: rgba(255,255,255,.18); transform: skewX(-24deg); }
+.sector i.on1 { background: var(--success); box-shadow: 0 0 8px var(--success); } .sector i.on2 { background: var(--best); box-shadow: 0 0 8px var(--best); }
+/* italic display */
+.f1-i { font-style: italic; transform: skewX(-8deg); transform-origin: left bottom; display: inline-block; }
+
+/* ───────── shared page chrome re-skin ───────── */
+.pg { background: radial-gradient(1200px 600px at 85% -10%, rgba(225,6,0,.16), transparent 60%), #0b0b10; }
+.pg::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .5; background-image: repeating-linear-gradient(115deg, rgba(255,255,255,.025) 0 1px, transparent 1px 38px); }
+.pg-title h1 { font-style: italic; letter-spacing: -.045em; transform: skewX(-7deg); transform-origin: left bottom; }
+.pg-title::after { content: ''; display: block; height: 14px; width: min(340px, 40vw); margin-top: 36px; clip-path: var(--slash-r); }
+.pg-title::after { background: repeating-linear-gradient(135deg, var(--accent) 0 9px, #f4f4f7 9px 18px); }
+.pg .sec-k b { display: inline-block; background: var(--accent); color: #fff; font-size: clamp(30px, 4vw, 60px); padding: 10px 28px 10px 16px; clip-path: var(--slash-r); letter-spacing: -.02em; }
+.pg .sec { border-top: 0; position: relative; }
+.pg .sec::before { content: ''; position: absolute; top: 0; left: var(--pad); right: var(--pad); height: 1px; background: linear-gradient(90deg, var(--accent), rgba(244,244,247,.14) 22%); }
+.pg .pbtn, .pg .act { border-radius: 0; clip-path: var(--slash-r); padding-right: 36px; }
+.pg .pbtn.ghost { border: 0; background: rgba(244,244,247,.1); }
+.pg .choice { border-radius: 0; border: 0; background: rgba(244,244,247,.07); padding: 0; clip-path: var(--slash-r); }
+.pg .choice i { top: 0; bottom: 0; border-radius: 0; clip-path: var(--slash-r); }
+.pg .choice button { border-radius: 0; padding: 15px 30px; }
+.pg .sw { border-radius: 0; clip-path: var(--slash-both); border: 0; background: rgba(244,244,247,.12); width: 80px; }
+.pg .sw i { border-radius: 0; clip-path: var(--slash-both); width: 34px; background: var(--paper); }
+.pg .sw[aria-checked='true'] i { transform: translateX(38px); }
+.pg .cap { border-radius: 2px; background: rgba(244,244,247,.06); }
+.pg .field label, .pg .field .lbl { font-style: italic; }
+.pg .line-in { border-bottom: 2px solid rgba(244,244,247,.2); }
+.pg .msg { clip-path: var(--chamfer); }
+
+/* ───────── race: timing-board treatment ───────── */
+.race-workspace, .ws { background: #0b0b10; }
+.ws-left, .ws-right { background-color: #101016; }
+.tower-row > [role='cell']:first-child { position: relative; z-index: 1; justify-content: center; margin-left: -12px; width: 34px; height: 70%; background: var(--paper); color: var(--f1-black) !important; clip-path: var(--slash-r); --c: 6px; font-style: italic; }
+.tower-row > [role='cell']:first-child span { color: var(--f1-black); }
+.tower-row > div:nth-child(2) { transform: skewX(-18deg); width: 5px !important; height: 70% !important; box-shadow: 0 0 10px var(--team); }
+.tower-row > [role='cell']:nth-child(3) span:first-child { font-style: italic; letter-spacing: .02em; }
+.tower-row { border-bottom: 1px solid rgba(255,255,255,.04); }
+.flag-pop > * { clip-path: var(--slash-both); border-radius: 0 !important; }
+.race-workspace footer, .ws-up { border-top: 0 !important; position: relative; }
+.ws-up::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 6; background: repeating-linear-gradient(135deg, var(--accent) 0 9px, #f4f4f7 9px 18px); opacity: .9; }
+.ws-down { position: relative; }
+.ws-down::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent) 18%, rgba(255,255,255,.1) 40%, transparent); pointer-events: none; z-index: 40; }
+.play-btn { clip-path: none; }
+
+/* quali */
+.pg-q .drv { clip-path: var(--slash-r); border: 0; background: rgba(244,244,247,.07); padding-right: 32px; border-radius: 0; }
+.pg-q .drv::after { width: 5px; transform: skewX(-18deg); left: 6px; }
+.pg-q .drv b { padding-left: 14px; font-style: italic; }
+.pg-q .q-title { font-style: italic; transform: skewX(-7deg); transform-origin: left bottom; }
+.pg-q .q-pole { border-top: 0; background: linear-gradient(90deg, rgba(177,56,221,.22), transparent 70%); padding: 18px 28px; clip-path: var(--slash-r); --c: 28px; width: fit-content; }
