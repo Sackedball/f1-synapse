@@ -4,8 +4,10 @@ Extracts historical FastF1 data, engineers continuous features, applies
 LOCO cross-validation, and exports serialized models for the live stream.
 """
 
+from __future__ import annotations
 import os
 import sys
+from typing import Optional, List, Dict
 import joblib
 import numpy as np
 import pandas as pd
@@ -31,11 +33,22 @@ os.makedirs("models", exist_ok=True)
 # 1. Overtake Probability Model (LightGBM)
 # ---------------------------------------------------------
 
-def build_overtake_dataset(year: int = 2023) -> pd.DataFrame:
+def build_overtake_dataset(year: int = 2023, data_path: Optional[str] = None) -> pd.DataFrame:
     """
-    Extracts historical telemetry, downsamples to reduce autocorrelation,
-    and constructs continuous kinematic interaction features.
+    Loads real ground-truth overtake dataset if available (e.g. from data/overtake_dataset.csv),
+    or mines from FastF1 telemetry.
     """
+    for candidate in [data_path, "data/overtake_dataset.parquet", "data/overtake_dataset.csv"]:
+        if candidate and os.path.exists(candidate):
+            print(f"Loading real ground-truth overtake dataset from {candidate}...")
+            if candidate.endswith(".parquet"):
+                try:
+                    return pd.read_parquet(candidate)
+                except Exception:
+                    pass
+            elif candidate.endswith(".csv"):
+                return pd.read_csv(candidate)
+
     print(f"Building Overtake Dataset for {year}...")
     schedule = fastf1.get_event_schedule(year)
     dataset = []
@@ -124,12 +137,21 @@ def train_overtake_model(df: pd.DataFrame):
         verbose=-1
     )
 
-    # Leave-One-Circuit-Out (LOCO) Cross-Validation
-    n_splits = min(5, max(2, df['circuit_id'].nunique()))
-    gkf = GroupKFold(n_splits=n_splits)
-    print("\n--- Overtake Model LOCO Evaluation ---")
+    # Leave-One-Circuit-Out (LOCO) or Stratified Cross-Validation
+    num_circuits = df['circuit_id'].nunique()
+    print("\n--- Overtake Model Evaluation ---")
+    if num_circuits >= 2:
+        n_splits = min(5, num_circuits)
+        cv = GroupKFold(n_splits=n_splits)
+        cv_splits = cv.split(X, y, groups)
+        print(f"Leave-One-Circuit-Out (LOCO) Cross-Validation ({n_splits} folds):")
+    else:
+        from sklearn.model_selection import StratifiedKFold
+        cv = StratifiedKFold(n_splits=min(5, len(y) // 10), shuffle=True, random_state=42)
+        cv_splits = cv.split(X, y)
+        print("Stratified 5-Fold Cross-Validation (single circuit dataset):")
 
-    for fold, (train_idx, val_idx) in enumerate(gkf.split(X, y, groups)):
+    for fold, (train_idx, val_idx) in enumerate(cv_splits):
         X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
         X_val, y_val = X.iloc[val_idx], y.iloc[val_idx]
 
@@ -150,11 +172,45 @@ def train_overtake_model(df: pd.DataFrame):
 # 2. Pit Stop Anticipation Model (XGBoost)
 # ---------------------------------------------------------
 
-def build_pit_dataset() -> pd.DataFrame:
+def build_pit_dataset(data_path: Optional[str] = None) -> pd.DataFrame:
     """
-    Constructs stint degradation and race condition triggers.
+    Loads real ground-truth pit stop dataset if available (e.g. from data/pit_stop_dataset.csv),
+    or constructs synthetic stint degradation and race condition triggers as fallback.
     """
-    print("\nBuilding Pit Stop Dataset...")
+    for candidate in [data_path, "data/pit_stop_dataset.parquet", "data/pit_stop_dataset.csv"]:
+        if candidate and os.path.exists(candidate):
+            print(f"Loading real ground-truth pit stop dataset from {candidate}...")
+            df = None
+            if candidate.endswith(".parquet"):
+                try:
+                    df = pd.read_parquet(candidate)
+                except Exception:
+                    pass
+            elif candidate.endswith(".csv"):
+                df = pd.read_csv(candidate)
+
+            if df is not None and not df.empty:
+                # If the mined dataset lacks SC events (e.g. only Bahrain), augment SC samples to learn neutralization hazard
+                if "sc_active" in df.columns and df["sc_active"].sum() < 5:
+                    print("Notice: Real dataset has scarce Safety Car events (<5). Augmenting with neutralization hazard samples...")
+                    n_aug = 400
+                    rng = np.random.default_rng(42)
+                    tl_aug = rng.integers(15, 36, n_aug)
+                    sc_df = pd.DataFrame({
+                        "session_id": "AUGMENTED_SC",
+                        "circuit_id": 99,
+                        "tyre_life": tl_aug,
+                        "tyre_compound": rng.choice([0.0, 1.0, 2.0], n_aug),
+                        "sc_active": np.ones(n_aug, dtype=int),
+                        "vsc_active": np.zeros(n_aug, dtype=int),
+                        "lap_number": rng.integers(10, 50, n_aug),
+                    })
+                    prob_sc = np.clip((tl_aug / 30.0) ** 2 + 0.50, 0.10, 0.98)
+                    sc_df["target_pit"] = rng.binomial(1, prob_sc)
+                    df = pd.concat([df, sc_df], ignore_index=True)
+                return df
+
+    print("\nBuilding Synthetic Pit Stop Dataset fallback...")
     n_samples = 5000
     df = pd.DataFrame({
         'tyre_life': np.random.randint(1, 40, n_samples),

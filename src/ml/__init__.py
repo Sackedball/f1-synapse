@@ -15,6 +15,15 @@ from src.ml.features import (
 from src.ml.overtake import OvertakeModel
 from src.ml.pit import PitModel
 from src.ml.tyre import TyreDegradationEstimator
+from src.ml.mining import (
+    FastF1DatasetMiner,
+    standardize_laps_dataframe,
+    mine_overtake_dataset_from_channels,
+    mine_pit_dataset_from_laps,
+    save_dataset,
+    generate_mock_overtake_dataset,
+    generate_mock_pit_dataset,
+)
 
 __all__ = [
     "ModelRegistry",
@@ -27,4 +36,11 @@ __all__ = [
     "OvertakeModel",
     "PitModel",
     "TyreDegradationEstimator",
+    "FastF1DatasetMiner",
+    "standardize_laps_dataframe",
+    "mine_overtake_dataset_from_channels",
+    "mine_pit_dataset_from_laps",
+    "save_dataset",
+    "generate_mock_overtake_dataset",
+    "generate_mock_pit_dataset",
 ]
