@@ -100,6 +100,11 @@ class JobManager:
 
             # 3. If not refreshing and already on disk
             if not refresh and session_service.is_cached_on_disk(sid):
+                if session_type in ("Q", "SQ"):
+                    job_id = str(uuid.uuid4())
+                    job = Job(job_id=job_id, session_id=sid, stage="ready", progress=1.0, message="Session ready (from cache)")
+                    self._jobs[job_id] = job
+                    return job
                 loaded = session_service.load_from_disk(sid)
                 if loaded is not None:
                     job_id = str(uuid.uuid4())

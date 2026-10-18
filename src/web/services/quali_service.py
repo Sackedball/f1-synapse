@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 import numpy as np
+import orjson
 
 from src.web.config import config
 from src.web.schemas.quali import (
@@ -16,6 +17,7 @@ from src.web.schemas.quali import (
     QualiTelemetryResponse,
 )
 from src.web.services.session_service import session_service
+from src.web.services.track_service import build_track_geometry
 from src.f1_data import (
     load_session,
     get_qualifying_results,
@@ -43,14 +45,88 @@ class QualiService:
             return fixture_dir
         return None
 
+    def _compute_and_save_results(self, session, sid: str) -> QualiResultsResponse:
+        raw_results = get_qualifying_results(session)
+
+        driver_results: list[QualiDriverResult] = []
+        pole_time: Optional[float] = None
+        pole_driver: Optional[str] = None
+
+        for row in raw_results:
+            code = row["code"]
+            pos = int(row["position"])
+            q1 = float(row["Q1"]) if row.get("Q1") is not None else None
+            q2 = float(row["Q2"]) if row.get("Q2") is not None else None
+            q3 = float(row["Q3"]) if row.get("Q3") is not None else None
+
+            times = [t for t in (q3, q2, q1) if t is not None]
+            best = min(times) if times else None
+
+            if pos == 1:
+                pole_time = best
+                pole_driver = code
+
+            color_hex = _rgb_to_hex(row.get("color", "#808080"))
+            team_name = ""
+            try:
+                drv_meta = session.get_driver(code)
+                team_name = str(drv_meta.get("TeamName", ""))
+            except Exception:
+                pass
+
+            driver_results.append(
+                QualiDriverResult(
+                    code=code,
+                    fullName=row.get("full_name", code),
+                    position=pos,
+                    color=color_hex,
+                    team=team_name,
+                    q1=q1,
+                    q2=q2,
+                    q3=q3,
+                    bestLap=best,
+                    gap=None,
+                    compound="SOFT",
+                )
+            )
+
+        # Sort by position
+        driver_results.sort(key=lambda r: r.position)
+
+        # Calculate gap to pole
+        for r in driver_results:
+            if pole_time is not None and r.bestLap is not None:
+                r.gap = round(r.bestLap - pole_time, 3)
+
+        res = QualiResultsResponse(
+            sessionId=sid,
+            eventName=str(getattr(session.event, "EventName", "Qualifying")),
+            circuitName=str(getattr(session.event, "Location", "Circuit")),
+            poleLap=pole_time,
+            poleDriver=pole_driver,
+            results=driver_results,
+        )
+
+        # Cache to disk
+        try:
+            out_dir = config.web_data_dir / sid
+            out_dir.mkdir(parents=True, exist_ok=True)
+            cache_file = out_dir / "quali_results.json"
+            with open(cache_file, "wb") as f:
+                f.write(orjson.dumps(res.model_dump(by_alias=True)))
+        except Exception as e:
+            logger.warning("Failed to cache quali results: %s", e)
+
+        return res
+
     def get_results(self, sid: str) -> QualiResultsResponse:
         """Get qualifying classification for a session."""
         # 1. Check disk cache
         cache_file = config.web_data_dir / sid / "quali_results.json"
         if cache_file.exists():
             try:
-                with open(cache_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                with open(cache_file, "rb") as f:
+                    data = orjson.loads(f.read())
                     return QualiResultsResponse(**data)
             except Exception as e:
                 logger.warning("Failed to load cached quali results for %s: %s", sid, e)
@@ -67,87 +143,172 @@ class QualiService:
 
         # 3. Live FastF1 query
         try:
-            year, round_num, _ = session_service.parse_session_id(sid)
+            year, round_num, session_type = session_service.parse_session_id(sid)
             enable_cache()
-            session = load_session(year, round_num, "Q")
-            raw_results = get_qualifying_results(session)
-
-            driver_results: list[QualiDriverResult] = []
-            pole_time: Optional[float] = None
-            pole_driver: Optional[str] = None
-
-            for row in raw_results:
-                code = row["code"]
-                pos = int(row["position"])
-                q1 = float(row["Q1"]) if row.get("Q1") is not None else None
-                q2 = float(row["Q2"]) if row.get("Q2") is not None else None
-                q3 = float(row["Q3"]) if row.get("Q3") is not None else None
-
-                times = [t for t in (q3, q2, q1) if t is not None]
-                best = min(times) if times else None
-
-                if pos == 1:
-                    pole_time = best
-                    pole_driver = code
-
-                color_hex = _rgb_to_hex(row.get("color", "#808080"))
-                team_name = ""
-                try:
-                    drv_meta = session.get_driver(code)
-                    team_name = str(drv_meta.get("TeamName", ""))
-                except Exception:
-                    pass
-
-                driver_results.append(
-                    QualiDriverResult(
-                        code=code,
-                        fullName=row.get("full_name", code),
-                        position=pos,
-                        color=color_hex,
-                        team=team_name,
-                        q1=q1,
-                        q2=q2,
-                        q3=q3,
-                        bestLap=best,
-                        gap=None,
-                        compound="SOFT",
-                    )
-                )
-
-            # Sort by position
-            driver_results.sort(key=lambda r: r.position)
-
-            # Calculate gap to pole
-            for r in driver_results:
-                if pole_time is not None and r.bestLap is not None:
-                    r.gap = round(r.bestLap - pole_time, 3)
-
-            res = QualiResultsResponse(
-                sessionId=sid,
-                eventName=str(getattr(session.event, "EventName", "Qualifying")),
-                circuitName=str(getattr(session.event, "Location", "Circuit")),
-                poleLap=pole_time,
-                poleDriver=pole_driver,
-                results=driver_results,
-            )
-
-            # Cache to disk
-            try:
-                out_dir = config.web_data_dir / sid
-                out_dir.mkdir(parents=True, exist_ok=True)
-                with open(cache_file, "w", encoding="utf-8") as f:
-                    f.write(res.model_dump_json(indent=2))
-            except Exception as e:
-                logger.warning("Failed to cache quali results: %s", e)
-
-            return res
-
+            session = load_session(year, round_num, session_type if session_type in ("Q", "SQ") else "Q")
+            return self._compute_and_save_results(session, sid)
         except Exception as e:
             logger.error("Failed to load qualifying results for %s: %s", sid, e)
             raise HTTPException(
                 status_code=404,
                 detail={"code": "quali_not_found", "message": f"Qualifying data not found for session '{sid}': {e}"},
             )
+
+    def _compute_driver_telemetry(self, session, driver: str, segment_norm: str) -> QualiTelemetryResponse:
+        data = get_driver_quali_telemetry(session, driver, segment_norm)
+
+        frames = data.get("frames", [])
+        if not frames:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "empty_telemetry",
+                    "message": f"No telemetry frames returned for driver '{driver}' in {segment_norm}",
+                },
+            )
+
+        # Extract raw distance series
+        raw_t = [f["t"] for f in frames]
+        raw_dist = [f["telemetry"]["dist"] for f in frames]
+        raw_speed = [f["telemetry"]["speed"] for f in frames]
+        raw_gear = [f["telemetry"]["gear"] for f in frames]
+        raw_throttle = [f["telemetry"]["throttle"] for f in frames]
+        raw_brake = [f["telemetry"]["brake"] for f in frames]
+        raw_x = [f["telemetry"]["x"] for f in frames]
+        raw_y = [f["telemetry"]["y"] for f in frames]
+
+        # Uniform distance grid at 10m intervals
+        max_dist = max(raw_dist)
+        grid_dist = np.arange(0, max_dist, 10.0)
+        if len(grid_dist) == 0 or grid_dist[-1] < max_dist:
+            grid_dist = np.append(grid_dist, max_dist)
+
+        # Sort raw distance monotonically for np.interp
+        raw_dist_arr = np.array(raw_dist)
+        sort_order = np.argsort(raw_dist_arr)
+        raw_dist_sorted = raw_dist_arr[sort_order]
+
+        # Drop duplicates in raw_dist_sorted
+        unique_mask = np.diff(raw_dist_sorted, prepend=-1) > 1e-4
+        raw_dist_sorted = raw_dist_sorted[unique_mask]
+
+        interp_speed = np.interp(grid_dist, raw_dist_sorted, np.array(raw_speed)[sort_order][unique_mask])
+        interp_th = np.interp(grid_dist, raw_dist_sorted, np.array(raw_throttle)[sort_order][unique_mask])
+        interp_br = np.interp(grid_dist, raw_dist_sorted, np.array(raw_brake)[sort_order][unique_mask])
+        interp_x = np.interp(grid_dist, raw_dist_sorted, np.array(raw_x)[sort_order][unique_mask])
+        interp_y = np.interp(grid_dist, raw_dist_sorted, np.array(raw_y)[sort_order][unique_mask])
+        interp_t = np.interp(grid_dist, raw_dist_sorted, np.array(raw_t)[sort_order][unique_mask])
+
+        # Forward-fill / step interpolate gear
+        gear_sorted = np.array(raw_gear)[sort_order][unique_mask]
+        idxs = np.searchsorted(raw_dist_sorted, grid_dist, side="right") - 1
+        idxs = np.clip(idxs, 0, len(gear_sorted) - 1)
+        interp_gear = gear_sorted[idxs].astype(int)
+
+        sec_times = data.get("sector_times", {})
+        sectors = SectorTimes(
+            sector1=sec_times.get("sector1"),
+            sector2=sec_times.get("sector2"),
+            sector3=sec_times.get("sector3"),
+        )
+
+        compound_name = "SOFT"
+        if data.get("compound") == 1:
+            compound_name = "MEDIUM"
+        elif data.get("compound") == 2:
+            compound_name = "HARD"
+
+        return QualiTelemetryResponse(
+            driver=driver,
+            segment=segment_norm,
+            lapTime=raw_t[-1] if raw_t else None,
+            sectors=sectors,
+            compound=compound_name,
+            distance=[round(float(d), 1) for d in grid_dist],
+            speed=[round(float(s), 1) for s in interp_speed],
+            gear=[int(g) for g in interp_gear],
+            throttle=[round(float(th), 1) for th in interp_th],
+            brake=[round(float(br), 1) for br in interp_br],
+            x=[round(float(x), 2) for x in interp_x],
+            y=[round(float(y), 2) for y in interp_y],
+            time=[round(float(t), 3) for t in interp_t],
+        )
+
+    def process_and_save_quali(
+        self,
+        sid: str,
+        year: int,
+        round_num: int,
+        session_type: str = "Q",
+        progress_cb=None,
+    ) -> QualiResultsResponse:
+        """Process and persist qualifying results, track geometry, and top-driver telemetry."""
+        enable_cache()
+
+        if progress_cb:
+            progress_cb("downloading", 0.20, f"Loading qualifying session {sid} from FastF1...")
+
+        session = load_session(year, round_num, session_type)
+
+        if progress_cb:
+            progress_cb("processing_drivers", 0.45, "Processing qualifying classification...")
+
+        # 1. Compute & save classification results
+        res = self._compute_and_save_results(session, sid)
+
+        # 2. Build & save track geometry
+        if progress_cb:
+            progress_cb("resampling", 0.65, "Extracting circuit geometry...")
+
+        example_lap_tel = None
+        try:
+            if getattr(session, "_laps", None) is not None and not session.laps.empty:
+                fastest = session.laps.pick_fastest()
+                if fastest is not None:
+                    example_lap_tel = fastest.get_telemetry()
+        except Exception as e:
+            logger.debug("Failed to get fastest lap for track geometry: %s", e)
+
+        track = build_track_geometry(example_lap_tel, session=session)
+        out_dir = config.web_data_dir / sid
+        out_dir.mkdir(parents=True, exist_ok=True)
+        track_file = out_dir / "track.json"
+        try:
+            with open(track_file, "wb") as f:
+                f.write(orjson.dumps(track.model_dump(by_alias=True)))
+        except Exception as e:
+            logger.warning("Failed to save qualifying track.json: %s", e)
+
+        # 3. Pre-compute telemetry for key drivers
+        if progress_cb:
+            progress_cb("indexing_events", 0.85, "Pre-computing telemetry for key drivers...")
+
+        telemetry_cache: dict[str, dict[str, dict]] = {}
+        target_drivers = [r.code for r in res.results[:5]] if res.results else []
+        for drv in target_drivers:
+            drv_res = next((r for r in res.results if r.code == drv), None)
+            if not drv_res:
+                continue
+            telemetry_cache[drv] = {}
+            for seg, time_val in (("Q3", drv_res.q3), ("Q2", drv_res.q2), ("Q1", drv_res.q1)):
+                if time_val is not None:
+                    try:
+                        telem = self._compute_driver_telemetry(session, drv, seg)
+                        telemetry_cache[drv][seg] = telem.model_dump(by_alias=True)
+                    except Exception as e:
+                        logger.debug("Skipping precompute telemetry for %s %s: %s", drv, seg, e)
+
+        telem_file = out_dir / "quali_telemetry.json"
+        try:
+            with open(telem_file, "wb") as f:
+                f.write(orjson.dumps(telemetry_cache))
+        except Exception as e:
+            logger.warning("Failed to save quali_telemetry.json: %s", e)
+
+        if progress_cb:
+            progress_cb("ready", 1.0, f"Qualifying session {sid} ready")
+
+        return res
 
     def get_telemetry(self, sid: str, driver: str, segment: str = "Q3") -> QualiTelemetryResponse:
         """Get distance-resampled telemetry for driver best lap in segment."""
@@ -158,7 +319,20 @@ class QualiService:
                 detail={"code": "invalid_segment", "message": "Segment must be 'Q1', 'Q2', or 'Q3'"},
             )
 
-        # 1. Check fixture
+        # 1. Check disk cache
+        cache_file = config.web_data_dir / sid / "quali_telemetry.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "rb") as f:
+                    cache_data = orjson.loads(f.read())
+                drv_data = cache_data.get(driver, {})
+                seg_data = drv_data.get(segment_norm)
+                if seg_data:
+                    return QualiTelemetryResponse(**seg_data)
+            except Exception as e:
+                logger.debug("Failed to read cached quali telemetry for %s %s: %s", driver, segment_norm, e)
+
+        # 2. Check fixture
         fix_dir = self._get_fixture_dir(sid)
         if fix_dir:
             fix_file = fix_dir / "quali_telemetry.json"
@@ -206,7 +380,6 @@ class QualiService:
                             time=seg_data.get("time", []),
                         )
 
-
         # Pre-check driver participation from qualifying results
         try:
             results_resp = self.get_results(sid)
@@ -234,89 +407,34 @@ class QualiService:
         except Exception as e:
             logger.debug("Participation pre-check skipped: %s", e)
 
-        # 2. Live FastF1 query
+        # 3. Live FastF1 query
         try:
-            year, round_num, _ = session_service.parse_session_id(sid)
+            year, round_num, session_type = session_service.parse_session_id(sid)
             enable_cache()
-            session = load_session(year, round_num, "Q")
-            data = get_driver_quali_telemetry(session, driver, segment_norm)
+            session = load_session(year, round_num, session_type if session_type in ("Q", "SQ") else "Q")
+            telem_resp = self._compute_driver_telemetry(session, driver, segment_norm)
 
-            frames = data.get("frames", [])
-            if not frames:
-                raise HTTPException(
-                    status_code=404,
-                    detail={
-                        "code": "empty_telemetry",
-                        "message": f"No telemetry frames returned for driver '{driver}' in {segment_norm}",
-                    },
-                )
+            # Persist into disk cache
+            try:
+                out_dir = config.web_data_dir / sid
+                out_dir.mkdir(parents=True, exist_ok=True)
+                cache_file = out_dir / "quali_telemetry.json"
+                cache_data = {}
+                if cache_file.exists():
+                    try:
+                        with open(cache_file, "rb") as f:
+                            cache_data = orjson.loads(f.read())
+                    except Exception:
+                        cache_data = {}
+                if driver not in cache_data:
+                    cache_data[driver] = {}
+                cache_data[driver][segment_norm] = telem_resp.model_dump(by_alias=True)
+                with open(cache_file, "wb") as f:
+                    f.write(orjson.dumps(cache_data))
+            except Exception as e:
+                logger.debug("Failed to cache driver quali telemetry: %s", e)
 
-            # Extract raw distance series
-            raw_t = [f["t"] for f in frames]
-            raw_dist = [f["telemetry"]["dist"] for f in frames]
-            raw_speed = [f["telemetry"]["speed"] for f in frames]
-            raw_gear = [f["telemetry"]["gear"] for f in frames]
-            raw_throttle = [f["telemetry"]["throttle"] for f in frames]
-            raw_brake = [f["telemetry"]["brake"] for f in frames]
-            raw_x = [f["telemetry"]["x"] for f in frames]
-            raw_y = [f["telemetry"]["y"] for f in frames]
-
-            # Uniform distance grid at 10m intervals
-            max_dist = max(raw_dist)
-            grid_dist = np.arange(0, max_dist, 10.0)
-            if len(grid_dist) == 0 or grid_dist[-1] < max_dist:
-                grid_dist = np.append(grid_dist, max_dist)
-
-            # Sort raw distance monotonically for np.interp
-            raw_dist_arr = np.array(raw_dist)
-            sort_order = np.argsort(raw_dist_arr)
-            raw_dist_sorted = raw_dist_arr[sort_order]
-
-            # Drop duplicates in raw_dist_sorted
-            unique_mask = np.diff(raw_dist_sorted, prepend=-1) > 1e-4
-            raw_dist_sorted = raw_dist_sorted[unique_mask]
-
-            interp_speed = np.interp(grid_dist, raw_dist_sorted, np.array(raw_speed)[sort_order][unique_mask])
-            interp_th = np.interp(grid_dist, raw_dist_sorted, np.array(raw_throttle)[sort_order][unique_mask])
-            interp_br = np.interp(grid_dist, raw_dist_sorted, np.array(raw_brake)[sort_order][unique_mask])
-            interp_x = np.interp(grid_dist, raw_dist_sorted, np.array(raw_x)[sort_order][unique_mask])
-            interp_y = np.interp(grid_dist, raw_dist_sorted, np.array(raw_y)[sort_order][unique_mask])
-            interp_t = np.interp(grid_dist, raw_dist_sorted, np.array(raw_t)[sort_order][unique_mask])
-
-            # Forward-fill / step interpolate gear
-            gear_sorted = np.array(raw_gear)[sort_order][unique_mask]
-            idxs = np.searchsorted(raw_dist_sorted, grid_dist, side="right") - 1
-            idxs = np.clip(idxs, 0, len(gear_sorted) - 1)
-            interp_gear = gear_sorted[idxs].astype(int)
-
-            sec_times = data.get("sector_times", {})
-            sectors = SectorTimes(
-                sector1=sec_times.get("sector1"),
-                sector2=sec_times.get("sector2"),
-                sector3=sec_times.get("sector3"),
-            )
-
-            compound_name = "SOFT"
-            if data.get("compound") == 1:
-                compound_name = "MEDIUM"
-            elif data.get("compound") == 2:
-                compound_name = "HARD"
-
-            return QualiTelemetryResponse(
-                driver=driver,
-                segment=segment_norm,
-                lapTime=raw_t[-1] if raw_t else None,
-                sectors=sectors,
-                compound=compound_name,
-                distance=[round(float(d), 1) for d in grid_dist],
-                speed=[round(float(s), 1) for s in interp_speed],
-                gear=[int(g) for g in interp_gear],
-                throttle=[round(float(th), 1) for th in interp_th],
-                brake=[round(float(br), 1) for br in interp_br],
-                x=[round(float(x), 2) for x in interp_x],
-                y=[round(float(y), 2) for y in interp_y],
-                time=[round(float(t), 3) for t in interp_t],
-            )
+            return telem_resp
 
         except HTTPException:
             raise

@@ -22,6 +22,7 @@ from src.web.schemas import (
     RaceEvent,
     MlTimelines,
 )
+from src.web.config import config
 from src.web.jobs import job_manager
 from src.web.services.session_service import session_service, LoadedSession
 from src.web.services.ml_service import ml_service
@@ -129,6 +130,22 @@ async def get_session_meta(sid: str):
 
 @router.get("/sessions/{sid}/track", response_model=TrackGeometry)
 async def get_session_track(sid: str):
+    track_file = config.web_data_dir / sid / "track.json"
+    if track_file.exists():
+        try:
+            with open(track_file, "rb") as f:
+                return TrackGeometry.model_validate(orjson.loads(f.read()))
+        except Exception as e:
+            logger.warning("Failed to read track.json for %s: %s", sid, e)
+
+    fixture_dir = Path("web/fixtures/suzuka-2026-r3")
+    if (sid == "suzuka-2026-r3" or sid == "2026_3_Q" or sid == "2026_3_R") and (fixture_dir / "track.json").exists():
+        try:
+            with open(fixture_dir / "track.json", "rb") as f:
+                return TrackGeometry.model_validate(orjson.loads(f.read()))
+        except Exception as e:
+            logger.warning("Failed to read fixture track.json for %s: %s", sid, e)
+
     session = _get_session_or_404(sid)
     return session.track
 

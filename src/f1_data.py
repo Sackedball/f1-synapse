@@ -52,12 +52,13 @@ def _process_single_driver(args):
     try:
         session = fastf1.get_session(year, round_number, session_type)
         session.load(telemetry=True, weather=False, messages=False)
+        if getattr(session, "_laps", None) is None:
+            return None
+        laps_driver = session.laps.pick_drivers(driver_no)
+        if laps_driver is None or laps_driver.empty:
+            return None
     except Exception as e:
-        print(f"Failed to load session for {driver_code}: {e}")
-        return None
-
-    laps_driver = session.laps.pick_drivers(driver_no)
-    if laps_driver.empty:
+        print(f"Failed to load session/laps for {driver_code}: {e}")
         return None
 
     driver_max_lap = laps_driver.LapNumber.max() if not laps_driver.empty else 0
@@ -69,7 +70,7 @@ def _process_single_driver(args):
     total_dist_so_far = 0.0
 
     total_race_laps = getattr(session, "total_laps", None)
-    if not total_race_laps and hasattr(session, "laps") and not session.laps.empty:
+    if not total_race_laps and getattr(session, "_laps", None) is not None and not session.laps.empty:
         total_race_laps = int(session.laps.LapNumber.max())
 
     # iterate laps in order
@@ -725,19 +726,23 @@ def get_race_telemetry(session, session_type="R"):
             print(f"Weather data could not be processed: {e}")
 
     pit_windows = {}
-    laps = session.laps
-    for driver_no in drivers:
-        drv = session.get_driver(driver_no)["Abbreviation"]
-        driver_laps = laps.pick_drivers(drv)
-        windows = []
-        for _, lap in driver_laps.iterrows():
-            pit_in = lap.get("PitInTime")
-            pit_out = lap.get("PitOutTime")
-            if pd.notna(pit_in):
-                start = pit_in.total_seconds()
-                end = pit_out.total_seconds() if pd.notna(pit_out) else start + 40
-                windows.append((start, end))
-        pit_windows[drv] = windows
+    if getattr(session, "_laps", None) is not None:
+        try:
+            laps = session.laps
+            for driver_no in drivers:
+                drv = session.get_driver(driver_no)["Abbreviation"]
+                driver_laps = laps.pick_drivers(drv)
+                windows = []
+                for _, lap in driver_laps.iterrows():
+                    pit_in = lap.get("PitInTime")
+                    pit_out = lap.get("PitOutTime")
+                    if pd.notna(pit_in):
+                        start = pit_in.total_seconds()
+                        end = pit_out.total_seconds() if pd.notna(pit_out) else start + 40
+                        windows.append((start, end))
+                pit_windows[drv] = windows
+        except Exception as e:
+            print(f"Failed to extract pit windows: {e}")
 
     pit_windows_shifted = {}
     for drv, windows in pit_windows.items():
@@ -861,8 +866,9 @@ def get_race_telemetry(session, session_type="R"):
 
 def get_qualifying_results(session):
     # Extract the qualifying results and return a list of the drivers, their positions and their lap times in each qualifying segment
-
-    results = session.results
+    results = getattr(session, "results", None)
+    if results is None or (hasattr(results, "empty") and results.empty):
+        return []
 
     qualifying_data = []
 
@@ -898,8 +904,13 @@ def get_qualifying_results(session):
 
 
 def get_driver_quali_telemetry(session, driver_code: str, quali_segment: str):
+    if getattr(session, "_laps", None) is None:
+        raise ValueError("No laps data loaded for this session.")
     # Split Q1/Q2/Q3 sections
-    q1, q2, q3 = session.laps.split_qualifying_sessions()
+    try:
+        q1, q2, q3 = session.laps.split_qualifying_sessions()
+    except Exception as e:
+        raise ValueError(f"Could not split qualifying sessions: {e}")
 
     segments = {"Q1": q1, "Q2": q2, "Q3": q3}
 

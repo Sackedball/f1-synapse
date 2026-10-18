@@ -105,3 +105,43 @@ def test_quali_telemetry_errors(client):
     res = client.get("/api/sessions/suzuka-2026-r3/quali/telemetry?driver=ZHO&segment=Q3")
     assert res.status_code == 404
     assert res.json()["error"]["code"] == "driver_not_in_segment"
+
+
+def test_quali_track_endpoint(client):
+    """Verify qualifying sessions can fetch track geometry via /api/sessions/{sid}/track."""
+    res = client.get("/api/sessions/2026_3_Q/track")
+    assert res.status_code == 200
+    data = res.json()
+    assert "centerline" in data
+    assert len(data["centerline"]) > 10
+
+
+def test_quali_session_load_job_lifecycle(client):
+    """Verify submitting a load job for a qualifying session completes with stage ready."""
+    resp = client.post("/api/sessions/load", json={"year": 2026, "round": 3, "type": "Q", "refresh": False})
+    assert resp.status_code == 200
+    job_data = resp.json()
+    job_id = job_data["jobId"]
+
+    res_status = client.get(f"/api/jobs/{job_id}")
+    assert res_status.status_code == 200
+    status_data = res_status.json()
+    assert status_data["stage"] == "ready"
+    assert status_data["progress"] == 1.0
+
+
+def test_f1_data_process_single_driver_guards_data_not_loaded():
+    """Verify _process_single_driver does not crash when session.laps raises DataNotLoadedError."""
+    from unittest.mock import MagicMock, patch
+    from src.f1_data import _process_single_driver
+
+    mock_session = MagicMock()
+    # Simulate DataNotLoadedError on session.laps
+    from fastf1.exceptions import DataNotLoadedError
+    type(mock_session).laps = property(lambda self: (_ for _ in ()).throw(DataNotLoadedError("Laps not loaded")))
+    mock_session._laps = None
+
+    with patch("fastf1.get_session", return_value=mock_session):
+        res = _process_single_driver((2024, 1, "Q", 1, "VER"))
+        assert res is None
+

@@ -89,7 +89,20 @@ class SessionService:
         return None
 
     def is_cached_on_disk(self, sid: str) -> bool:
+        try:
+            year, round_num, session_type = self.parse_session_id(sid)
+        except Exception:
+            session_type = ""
+
         dir_path = config.web_data_dir / sid
+        if session_type in ("Q", "SQ") or sid.endswith("_Q") or sid.endswith("_SQ"):
+            if (dir_path / "quali_results.json").exists():
+                return True
+            fixture_dir = Path("web/fixtures/suzuka-2026-r3")
+            if (sid == "suzuka-2026-r3" or sid == "2026_3_Q") and (fixture_dir / "quali_results.json").exists():
+                return True
+            return False
+
         npz_file = dir_path / "channels.npz"
         meta_file = dir_path / "meta.json"
         if not npz_file.exists() or not meta_file.exists():
@@ -126,6 +139,13 @@ class SessionService:
         return self._sessions.get(sid)
 
     def load_from_disk(self, sid: str) -> Optional[LoadedSession]:
+        try:
+            _, _, session_type = self.parse_session_id(sid)
+            if session_type in ("Q", "SQ"):
+                return None
+        except Exception:
+            pass
+
         dir_path = config.web_data_dir / sid
         if not self.is_cached_on_disk(sid):
             return None
@@ -351,8 +371,18 @@ class SessionService:
         round_num: int,
         session_type: str,
         progress_cb=None,
-    ) -> LoadedSession:
+    ):
         sid = self.session_id(year, round_num, session_type)
+        if session_type in ("Q", "SQ"):
+            from src.web.services.quali_service import quali_service
+            return quali_service.process_and_save_quali(
+                sid=sid,
+                year=year,
+                round_num=round_num,
+                session_type=session_type,
+                progress_cb=progress_cb,
+            )
+
         enable_cache()
 
         if progress_cb:

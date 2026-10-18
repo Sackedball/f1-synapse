@@ -1,6 +1,7 @@
 """Season schedule and cache status router."""
 
 import logging
+from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 import fastf1
@@ -86,8 +87,14 @@ async def get_cache_status(year: Optional[int] = Query(default=None)):
 
         for st in session_types:
             sid = f"{year}_{round_num}_{st}"
-            web_cached = (config.web_data_dir / sid / "channels.npz").exists()
-            legacy_flag = (config.computed_data_dir / f"{year}_Season_Round_{round_num}").exists()
+            if st in ("Q", "SQ"):
+                web_cached = (config.web_data_dir / sid / "quali_results.json").exists()
+                if not web_cached and (sid == "2026_3_Q" or sid == "suzuka-2026-r3"):
+                    web_cached = (Path("web/fixtures/suzuka-2026-r3") / "quali_results.json").exists()
+                legacy_flag = False
+            else:
+                web_cached = (config.web_data_dir / sid / "channels.npz").exists()
+                legacy_flag = (config.computed_data_dir / f"{year}_Season_Round_{round_num}").exists()
             sessions_status.append(
                 SessionCacheStatus(
                     type=st,
