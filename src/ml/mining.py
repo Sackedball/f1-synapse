@@ -19,6 +19,16 @@ import fastf1
 
 from src.lib.settings import get_settings
 from src.lib.tyres import get_tyre_compound_int
+from src.ml.features import (
+    compute_track_curvature,
+    compute_distance_to_next_heavy_braking,
+    compute_straight_fraction_remaining,
+    compute_clean_air_pace_diff,
+    compute_rolling_clean_air_pace,
+    standardize_laps_dataframe,
+    OVERTAKE_FEATURE_COLUMNS,
+    PIT_FEATURE_COLUMNS,
+)
 
 
 # Standard F1 physical and operational constants
@@ -53,117 +63,6 @@ def ensure_fastf1_cache(cache_dir: Optional[Union[str, Path]] = None) -> Path:
     cache_path.mkdir(parents=True, exist_ok=True)
     fastf1.Cache.enable_cache(str(cache_path))
     return cache_path
-
-
-# ---------------------------------------------------------------------------
-# 0. DataFrame Schema Normalization Helper
-# ---------------------------------------------------------------------------
-
-def standardize_laps_dataframe(laps_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Standardizes varying column schemas (e.g. from FastF1 core vs web Session LapRow models)
-    into a unified DataFrame schema:
-    - Driver: driver code string (e.g. 'VER')
-    - LapNumber: integer lap number
-    - LapTime: pd.Timedelta lap duration
-    - PitInTime: pd.Timedelta if car boxed on this lap, else pd.NaT
-    - PitOutTime: pd.Timedelta if car exited pits on this lap, else pd.NaT
-    - Compound: tyre compound string ('SOFT', 'MEDIUM', 'HARD', etc.)
-    - TyreLife: tyre age in laps
-    - Stint: stint index (1-based)
-    - Position: integer race position
-    - TrackStatus: track condition string
-    - Time: cumulative elapsed race time (calculated from LapTime cumsum if missing)
-    """
-    if laps_df is None or laps_df.empty:
-        return pd.DataFrame()
-
-    df = laps_df.copy()
-
-    rename_map = {
-        "driver": "Driver",
-        "lap": "LapNumber",
-        "lap_number": "LapNumber",
-        "timeSec": "LapTimeSec",
-        "time_sec": "LapTimeSec",
-        "lap_time_sec": "LapTimeSec",
-        "compound": "Compound",
-        "tyreLife": "TyreLife",
-        "tyre_life": "TyreLife",
-        "stint": "Stint",
-        "position": "Position",
-        "trackStatus": "TrackStatus",
-        "track_status": "TrackStatus",
-        "pitIn": "PitIn",
-        "pit_in": "PitIn",
-        "pitOut": "PitOut",
-        "pit_out": "PitOut",
-    }
-    for old_k, new_k in rename_map.items():
-        if old_k in df.columns and new_k not in df.columns:
-            df[new_k] = df[old_k]
-
-    # Convert LapTime
-    if "LapTime" not in df.columns and "LapTimeSec" in df.columns:
-        df["LapTime"] = pd.to_timedelta(pd.to_numeric(df["LapTimeSec"], errors="coerce"), unit="s")
-    elif "LapTime" in df.columns and not pd.api.types.is_timedelta64_dtype(df["LapTime"]):
-        if pd.api.types.is_numeric_dtype(df["LapTime"]):
-            df["LapTime"] = pd.to_timedelta(df["LapTime"], unit="s")
-        else:
-            df["LapTime"] = pd.to_timedelta(df["LapTime"], errors="coerce")
-
-    # Convert PitInTime / PitOutTime
-    if "PitInTime" not in df.columns:
-        if "PitIn" in df.columns:
-            df["PitInTime"] = df["PitIn"].apply(
-                lambda p: pd.to_timedelta(1, unit="s") if (p is True or p == 1 or p == "1") else pd.NaT
-            )
-        else:
-            df["PitInTime"] = pd.to_timedelta(pd.Series(np.nan, index=df.index), unit="s")
-    elif not pd.api.types.is_timedelta64_dtype(df["PitInTime"]):
-        if df["PitInTime"].isna().all():
-            df["PitInTime"] = pd.to_timedelta(pd.Series(np.nan, index=df.index), unit="s")
-        elif pd.api.types.is_numeric_dtype(df["PitInTime"]):
-            df["PitInTime"] = pd.to_timedelta(df["PitInTime"], unit="s")
-        elif not pd.api.types.is_datetime64_any_dtype(df["PitInTime"]):
-            df["PitInTime"] = pd.to_timedelta(df["PitInTime"], errors="coerce")
-
-    if "PitOutTime" not in df.columns:
-        if "PitOut" in df.columns:
-            df["PitOutTime"] = df["PitOut"].apply(
-                lambda p: pd.to_timedelta(1, unit="s") if (p is True or p == 1 or p == "1") else pd.NaT
-            )
-        else:
-            df["PitOutTime"] = pd.to_timedelta(pd.Series(np.nan, index=df.index), unit="s")
-    elif not pd.api.types.is_timedelta64_dtype(df["PitOutTime"]):
-        if df["PitOutTime"].isna().all():
-            df["PitOutTime"] = pd.to_timedelta(pd.Series(np.nan, index=df.index), unit="s")
-        elif pd.api.types.is_numeric_dtype(df["PitOutTime"]):
-            df["PitOutTime"] = pd.to_timedelta(df["PitOutTime"], unit="s")
-        elif not pd.api.types.is_datetime64_any_dtype(df["PitOutTime"]):
-            df["PitOutTime"] = pd.to_timedelta(df["PitOutTime"], errors="coerce")
-
-    # Driver as string
-    if "Driver" in df.columns:
-        df["Driver"] = df["Driver"].astype(str)
-
-    # LapNumber as integer
-    if "LapNumber" in df.columns:
-        df["LapNumber"] = pd.to_numeric(df["LapNumber"], errors="coerce").fillna(1).astype(int)
-
-    # Reconstruct cumulative Time if missing or all NaT
-    if "Time" not in df.columns or df["Time"].isna().all():
-        if "LapTime" in df.columns and "Driver" in df.columns:
-            df["Time"] = df.groupby("Driver")["LapTime"].cumsum()
-        else:
-            df["Time"] = pd.to_timedelta(pd.Series(np.nan, index=df.index), unit="s")
-    elif not pd.api.types.is_timedelta64_dtype(df["Time"]):
-        if pd.api.types.is_numeric_dtype(df["Time"]):
-            df["Time"] = pd.to_timedelta(df["Time"], unit="s")
-        elif not pd.api.types.is_datetime64_any_dtype(df["Time"]):
-            df["Time"] = pd.to_timedelta(df["Time"], errors="coerce")
-
-    return df
 
 
 # ---------------------------------------------------------------------------
@@ -675,6 +574,7 @@ def mine_overtake_dataset_from_channels(
     sample_stride_sec: float = 1.0,
     max_samples: Optional[int] = None,
     start_ignore_sec: float = 8.0,
+    centerline: Optional[Any] = None,
 ) -> pd.DataFrame:
     """
     Mines car-following candidate pairs and extracts continuous physics features
@@ -710,6 +610,10 @@ def mine_overtake_dataset_from_channels(
     braking_zones = find_heavy_braking_zones(
         dist[0], speed[0], brake[0], circuit_length=circuit_length
     )
+
+    curvature_arr = None
+    if centerline is not None and len(centerline) >= 3:
+        curvature_arr = compute_track_curvature(centerline)
 
     records: List[Dict[str, Any]] = []
 
@@ -793,10 +697,12 @@ def mine_overtake_dataset_from_channels(
             raw_drs = int(drs[att_idx, f])
             drs_active = 1 if (raw_drs >= 10 or raw_drs in (1, 2, 12, 14)) else 0
 
-            # Clean-air pace advantage: defender_pace - attacker_pace (positive = attacker faster)
-            p_dfnd = clean_pace_map.get(dfnd_code, 90.0)
-            p_att = clean_pace_map.get(att_code, 90.0)
+            # Clean-air pace advantage & differential (Delta Pace_clean)
+            curr_lap_num = int(lap[att_idx, f])
+            p_dfnd = clean_pace_map.get((dfnd_code, curr_lap_num), clean_pace_map.get(dfnd_code, 90.0))
+            p_att = clean_pace_map.get((att_code, curr_lap_num), clean_pace_map.get(att_code, 90.0))
             pace_adv = round(float(p_dfnd - p_att), 4) if not math.isnan(p_dfnd - p_att) else 0.0
+            clean_air_pace_diff = round(float(p_att - p_dfnd), 4) if not math.isnan(p_att - p_dfnd) else 0.0
 
             # Compound advantage & tyre wear delta
             c_att = int(tyre[att_idx, f])
@@ -811,6 +717,24 @@ def mine_overtake_dataset_from_channels(
             dist_to_bz, prox_bz = compute_braking_proximity(
                 dist[att_idx, f], braking_zones, circuit_length=circuit_length
             )
+            dist_to_next_heavy_braking = compute_distance_to_next_heavy_braking(
+                dist[att_idx, f], braking_zones, circuit_length=circuit_length
+            )
+
+            # Curvature & straight fraction
+            if curvature_arr is not None and len(curvature_arr) >= 3:
+                k_idx = int(((dist[att_idx, f] % circuit_length) / circuit_length) * len(curvature_arr)) % len(curvature_arr)
+                curvature = float(curvature_arr[k_idx])
+            else:
+                curvature = 0.0
+
+            straight_frac = compute_straight_fraction_remaining(
+                dist_m=dist[att_idx, f],
+                circuit_length=circuit_length,
+                centerline=centerline,
+                curvature_array=curvature_arr,
+                braking_zones=braking_zones,
+            )
 
             # Euclidean 2D distance
             if x is not None and y is not None:
@@ -820,12 +744,28 @@ def mine_overtake_dataset_from_channels(
             else:
                 euclidean_dist = round(delta_s, 2)
 
-            # Throttle & Brake statistics over trailing 3 seconds
+            # Throttle & Brake statistics over trailing 3 seconds with uniform scale
             w_back = slice(max(0, f - int(3.0 * fps)), f + 1)
-            mean_throttle = float(np.mean(throttle[att_idx, w_back]))
-            mean_brake = float(np.mean(brake[att_idx, w_back]))
-            th_recent = throttle[att_idx, w_back]
-            throttle_jerk = float((th_recent[-1] - th_recent[0]) / max((len(th_recent) - 1) * dt, 0.04)) if len(th_recent) >= 2 else 0.0
+            raw_th_w = throttle[att_idx, w_back]
+            max_th_val = np.max(raw_th_w) if len(raw_th_w) > 0 else 100.0
+            scale_th = 100.0 if (0.0 < max_th_val <= 1.0) else 1.0
+            th_recent = raw_th_w * scale_th
+            mean_throttle = float(np.mean(th_recent)) if len(th_recent) > 0 else 0.0
+
+            # Real longitudinal throttle jerk dThrottle/dt between adjacent frames
+            f_prev = max(0, f - 1)
+            th_curr = throttle[att_idx, f] * scale_th
+            th_prev = throttle[att_idx, f_prev] * scale_th
+            throttle_jerk = float((th_curr - th_prev) / dt) if f > 0 else 0.0
+
+            raw_brk_w = brake[att_idx, w_back]
+            brk_recent = (raw_brk_w > 0.0).astype(float)
+            mean_brake = float(np.mean(brk_recent)) if len(brk_recent) > 0 else 0.0
+
+            # Real braking onset delta between adjacent frames
+            brk_curr = 1.0 if brake[att_idx, f] > 0.0 else 0.0
+            brk_prev = 1.0 if brake[att_idx, f_prev] > 0.0 else 0.0
+            brake_onset_delta = float((brk_curr - brk_prev) / dt) if f > 0 else 0.0
 
             record = {
                 "session_id": session_id,
@@ -841,14 +781,19 @@ def mine_overtake_dataset_from_channels(
                 "closing_kinetic_energy": round(closing_ke, 2),
                 "drs_active": drs_active,
                 "clean_air_pace_advantage": pace_adv,
+                "clean_air_pace_diff": clean_air_pace_diff,
                 "compound_delta": round(compound_delta, 1),
                 "tyre_age_delta": round(tyre_age_delta, 1),
                 "proximity_to_braking_zone": prox_bz,
                 "dist_to_braking_zone": dist_to_bz,
+                "dist_to_next_heavy_braking": dist_to_next_heavy_braking,
+                "straight_fraction_remaining": straight_frac,
+                "curvature": curvature,
                 "euclidean_dist": euclidean_dist,
                 "mean_throttle": round(mean_throttle, 2),
                 "throttle_jerk": round(throttle_jerk, 2),
                 "mean_brake": round(mean_brake, 2),
+                "brake_onset_delta": round(brake_onset_delta, 2),
                 "target_overtake": int(label),
             }
             records.append(record)
@@ -1026,6 +971,11 @@ class FastF1DatasetMiner:
             return pd.DataFrame(), pd.DataFrame()
 
         clean_pace_map = compute_driver_clean_air_pace(session.laps)
+        laps_std = standardize_laps_dataframe(session.laps)
+        max_lap = int(laps_std["LapNumber"].max()) if not laps_std.empty else 60
+        for drv, df_drv in laps_std.groupby("Driver"):
+            for l_num in range(1, max_lap + 1):
+                clean_pace_map[(str(drv), l_num)] = compute_rolling_clean_air_pace(df_drv, l_num)
 
         # 1. Mine Pit Stop Dataset directly from laps
         pit_df = mine_pit_dataset_from_laps(
@@ -1068,6 +1018,10 @@ class FastF1DatasetMiner:
         """Mines datasets from an existing precomputed FrameStore and laps dataframe."""
         laps_std = standardize_laps_dataframe(laps_df)
         clean_pace_map = compute_driver_clean_air_pace(laps_std)
+        max_lap = int(laps_std["LapNumber"].max()) if not laps_std.empty else 60
+        for drv, df_drv in laps_std.groupby("Driver"):
+            for l_num in range(1, max_lap + 1):
+                clean_pace_map[(str(drv), l_num)] = compute_rolling_clean_air_pace(df_drv, l_num)
         fps = getattr(frame_store, "FPS", 25)
 
         # Pit stop dataset from standardized laps
@@ -1096,6 +1050,12 @@ class FastF1DatasetMiner:
         num_frames = frame_store.total_frames
         timeline = np.arange(num_frames) / float(fps)
 
+        centerline = None
+        if hasattr(frame_store, "track_centerline") and frame_store.track_centerline:
+            centerline = frame_store.track_centerline
+        elif hasattr(frame_store, "centerline") and frame_store.centerline:
+            centerline = frame_store.centerline
+
         overtake_df = mine_overtake_dataset_from_channels(
             session_id=session_id,
             circuit_id=circuit_id,
@@ -1107,6 +1067,7 @@ class FastF1DatasetMiner:
             fps=fps,
             sample_stride_sec=sample_stride_sec,
             max_samples=max_samples_per_race,
+            centerline=centerline,
         )
 
         return overtake_df, pit_df
@@ -1166,6 +1127,9 @@ def generate_mock_overtake_dataset(n_samples: int = 200, random_seed: int = 42) 
     )
     targets = rng.binomial(1, prob)
 
+    pace_adv = np.round(rng.uniform(-0.8, 1.2, n_samples), 4)
+    dist_bz = np.round(rng.uniform(10.0, 500.0, n_samples), 2)
+
     return pd.DataFrame({
         "session_id": "MOCK_2023_1_R",
         "circuit_id": 1,
@@ -1179,15 +1143,20 @@ def generate_mock_overtake_dataset(n_samples: int = 200, random_seed: int = 42) 
         "delta_a": np.round(rng.uniform(-3.0, 4.0, n_samples), 3),
         "closing_kinetic_energy": np.round(rng.uniform(-20.0, 50.0, n_samples), 2),
         "drs_active": drs,
-        "clean_air_pace_advantage": np.round(rng.uniform(-0.8, 1.2, n_samples), 4),
+        "clean_air_pace_advantage": pace_adv,
+        "clean_air_pace_diff": -pace_adv,
         "compound_delta": rng.choice([-1.0, 0.0, 1.0], n_samples),
         "tyre_age_delta": np.round(rng.uniform(-15.0, 15.0, n_samples), 1),
         "proximity_to_braking_zone": np.round(prox_bz, 4),
-        "dist_to_braking_zone": np.round(rng.uniform(10.0, 500.0, n_samples), 2),
+        "dist_to_braking_zone": dist_bz,
+        "dist_to_next_heavy_braking": dist_bz,
+        "straight_fraction_remaining": np.round(rng.uniform(0.0, 1.0, n_samples), 3),
+        "curvature": np.round(rng.uniform(0.0005, 0.02, n_samples), 5),
         "euclidean_dist": np.round(delta_s * 1.02, 2),
         "mean_throttle": np.round(rng.uniform(70.0, 100.0, n_samples), 2),
-        "throttle_jerk": np.round(rng.uniform(-5.0, 5.0, n_samples), 2),
-        "mean_brake": np.round(rng.uniform(0.0, 15.0, n_samples), 2),
+        "throttle_jerk": np.round(rng.uniform(-250.0, 250.0, n_samples), 2),
+        "mean_brake": np.round(rng.uniform(0.0, 1.0, n_samples), 2),
+        "brake_onset_delta": np.round(rng.uniform(-25.0, 25.0, n_samples), 2),
         "target_overtake": targets,
     })
 
