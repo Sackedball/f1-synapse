@@ -19,18 +19,45 @@ export function useInView<T extends Element>(threshold = 0.05, once = true) {
   return [ref, seen] as const;
 }
 
-/** Masked per-character rise. Each glyph slides up from behind a clip with a stagger. */
+/** Masked per-character rise. Each glyph slides up from behind a clip with a stagger.
+ * Words are wrapped individually to prevent mid-word character breaks across lines.
+ */
 export const SplitRise: React.FC<{ text: string; delay?: number; step?: number; className?: string; play?: boolean }> = ({
   text, delay = 0, step = 28, className = '', play = true,
-}) => (
-  <span className={`split ${play ? 'split-in' : ''} ${className}`} aria-label={text}>
-    {[...text].map((c, i) => (
-      <span key={i} className="split-mask" aria-hidden>
-        <span className="split-char" style={{ transitionDelay: `${delay + i * step}ms` }}>{c === ' ' ? '\u00A0' : c}</span>
-      </span>
-    ))}
-  </span>
-);
+}) => {
+  const words = text.split(' ');
+  let charCount = 0;
+
+  return (
+    <span className={`split ${play ? 'split-in' : ''} ${className}`} aria-label={text}>
+      {words.map((word, wIdx) => {
+        const wordChars = [...word];
+        const wordEl = (
+          <span key={wIdx} className="split-word" style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+            {wordChars.map((c) => {
+              const i = charCount++;
+              return (
+                <span key={i} className="split-mask" aria-hidden>
+                  <span className="split-char" style={{ transitionDelay: `${delay + i * step}ms` }}>{c}</span>
+                </span>
+              );
+            })}
+          </span>
+        );
+        if (wIdx < words.length - 1) {
+          charCount++;
+          return (
+            <React.Fragment key={wIdx}>
+              {wordEl}
+              <span className="split-space" style={{ display: 'inline-block' }}>&nbsp;</span>
+            </React.Fragment>
+          );
+        }
+        return wordEl;
+      })}
+    </span>
+  );
+};
 
 /**
  * Glyphs react to the pointer: nearby letters lift, skew and swell,

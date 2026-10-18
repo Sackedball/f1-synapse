@@ -3,6 +3,9 @@ import path from 'path';
 import fs from 'fs';
 
 const VIEWPORTS = [
+  { width: 1024, height: 537, name: '1024x537-compact-laptop' },
+  { width: 1150, height: 650, name: '1150x650-mid-laptop' },
+  { width: 1280, height: 720, name: '1280x720' },
   { width: 1366, height: 768, name: '1366x768' },
   { width: 1440, height: 900, name: '1440x900' },
   { width: 1920, height: 1080, name: '1920x1080' },
@@ -43,10 +46,13 @@ test.describe('Responsive Pass - Viewport Matrix', () => {
 
     test(`Home page renders correctly at ${vp.name} without horizontal overflow`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto('/?fixture=suzuka-2026-r3');
+      await page.addInitScript(() => {
+        sessionStorage.setItem('synapse.intro.v1', '1');
+      });
+      await page.goto('/');
       await page.waitForLoadState('networkidle');
 
-      await page.waitForSelector('text=SESSION LAUNCHER', { timeout: 10000 });
+      await page.waitForSelector('.hero', { timeout: 10000 });
       await page.waitForTimeout(300);
 
       const hasHorizontalOverflow = await page.evaluate(() => {
