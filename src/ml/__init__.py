@@ -24,6 +24,23 @@ from src.ml.mining import (
     generate_mock_overtake_dataset,
     generate_mock_pit_dataset,
 )
+from src.ml.evaluation import (
+    compute_expected_calibration_error,
+    compute_brier_score,
+    compute_pr_auc,
+    compute_roc_auc,
+    compute_reliability_diagram_bins,
+    evaluate_predictions,
+    evaluate_calibration_metrics,
+    leave_one_circuit_out_cv,
+    leave_one_season_out_cv,
+    heuristic_overtake_predict,
+    heuristic_pit_predict,
+    benchmark_overtake_models,
+    benchmark_pit_models,
+    BenchmarkReport,
+    format_benchmark_markdown_table,
+)
 
 __all__ = [
     "ModelRegistry",
@@ -43,4 +60,20 @@ __all__ = [
     "save_dataset",
     "generate_mock_overtake_dataset",
     "generate_mock_pit_dataset",
+    "compute_expected_calibration_error",
+    "compute_brier_score",
+    "compute_pr_auc",
+    "compute_roc_auc",
+    "compute_reliability_diagram_bins",
+    "evaluate_predictions",
+    "evaluate_calibration_metrics",
+    "leave_one_circuit_out_cv",
+    "leave_one_season_out_cv",
+    "heuristic_overtake_predict",
+    "heuristic_pit_predict",
+    "benchmark_overtake_models",
+    "benchmark_pit_models",
+    "BenchmarkReport",
+    "format_benchmark_markdown_table",
 ]
+
