@@ -21,6 +21,7 @@ web/*.tsbuildinfo
 
 # Precomputed / Scratch caches
 computed_data/
+data/
 scratch/
 
 # OS / Editor
