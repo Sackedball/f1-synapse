@@ -7,7 +7,7 @@ import { useMotionStore } from './store';
 import './page.css';
 
 /** Fixed, blend-inverted top bar shared by editorial pages. */
-export const PageNav: React.FC<{ section: string; backTestId?: string; to?: string | number; children?: React.ReactNode }> = ({ section, backTestId, to = -1, children }) => {
+export const PageNav: React.FC<{ section: string; backTestId?: string; to?: string | number; children?: React.ReactNode }> = ({ section, backTestId, to = '/', children }) => {
   const go = useCurtain();
   const ref = useMagnetic<HTMLButtonElement>(0.4, 60);
   return (
@@ -25,7 +25,7 @@ export const PageNav: React.FC<{ section: string; backTestId?: string; to?: stri
 
 /** Masked rise for blocks: content slides up out of a clip when scrolled into view. */
 export const Reveal: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({ children, delay = 0, className = '' }) => {
-  const [ref, seen] = useInView<HTMLDivElement>(0.12);
+  const [ref, seen] = useInView<HTMLDivElement>(0.02);
   return (
     <div ref={ref} className={`reveal ${seen ? 'reveal-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }}>
       {children}
@@ -33,12 +33,16 @@ export const Reveal: React.FC<{ children: React.ReactNode; delay?: number; class
   );
 };
 
-/** Giant page title with a per-glyph rise, gated on the intro finishing. */
+/** Giant page title with a per-glyph rise. Plays on mount. */
 export const BigTitle: React.FC<{ text: string; sub?: string }> = ({ text, sub }) => {
-  const intro = useMotionStore((s) => s.introDone);
+  const [play, setPlay] = useState(false);
+  useLayoutEffect(() => {
+    const t = setTimeout(() => setPlay(true), 30);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <div className="pg-title">
-      <h1><SplitRise text={text} play={intro} step={36} /></h1>
+      <h1><SplitRise text={text} play={play} step={36} /></h1>
       {sub && <p>{sub}</p>}
     </div>
   );

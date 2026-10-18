@@ -1,11 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { lerp, prefersReduced, subscribePointer } from './pointer';
 
-export function useInView<T extends Element>(threshold = 0.15, once = true) {
+export function useInView<T extends Element>(threshold = 0.05, once = true) {
   const ref = useRef<T>(null);
   const [seen, setSeen] = useState(false);
   useEffect(() => {
     const el = ref.current; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.top < (window.innerHeight || document.documentElement.clientHeight) && rect.bottom > 0) {
+      setSeen(true);
+      if (once) return;
+    }
     const io = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) { setSeen(true); if (once) io.disconnect(); } else if (!once) setSeen(false);
     }, { threshold });

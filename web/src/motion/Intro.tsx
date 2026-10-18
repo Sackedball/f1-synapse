@@ -10,7 +10,8 @@ const KEY = 'synapse.intro.v1';
  * the screen splits open along a hard diagonal to reveal the app.
  */
 export const Intro: React.FC<{ onDone?: () => void }> = ({ onDone }) => {
-  const skip = prefersReduced() || sessionStorage.getItem(KEY) === '1';
+  const isHome = typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '');
+  const skip = !isHome || prefersReduced() || sessionStorage.getItem(KEY) === '1';
   const [phase, setPhase] = useState<'run' | 'open' | 'gone'>(skip ? 'gone' : 'run');
   const [n, setN] = useState(0);
   const [lights, setLights] = useState(0);

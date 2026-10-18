@@ -8,8 +8,8 @@
 /* nav — broadcast top bar */
 .h-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; justify-content: space-between; align-items: center; padding: 0 var(--pad); height: 60px; background: linear-gradient(180deg, rgba(11,11,16,.92), rgba(11,11,16,0)); }
 .h-nav::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: linear-gradient(90deg, var(--accent-bright) 0, var(--accent) 140px, transparent 140px), linear-gradient(90deg, transparent 150px, rgba(244,244,247,.12) 150px); }
-.h-link { font: 700 11px var(--font-display); letter-spacing: .22em; text-transform: uppercase; padding: 20px 20px; position: relative; display: inline-block; color: rgba(244,244,247,.8); transition: color .3s; }
-.h-link::before { content: ''; position: absolute; inset: 14px 6px; background: var(--accent); clip-path: var(--slash-r); transform: translateX(-102%); transition: transform .5s var(--ease-expo); z-index: -1; }
+.h-link { font: 700 11px var(--font-display); letter-spacing: .22em; text-transform: uppercase; padding: 20px 20px; position: relative; display: inline-block; overflow: hidden; color: rgba(244,244,247,.8); transition: color .3s; }
+.h-link::before { content: ''; position: absolute; inset: 14px 6px; background: var(--accent); clip-path: var(--slash-r); transform: translateX(-115%); transition: transform .5s var(--ease-expo); z-index: -1; }
 .h-link:hover { color: #fff; } .h-link:hover::before { transform: none; }
 
 /* split layout: content + sticky circuit stage */

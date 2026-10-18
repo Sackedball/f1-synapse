@@ -38,7 +38,7 @@
 .pg-title::after { background: repeating-linear-gradient(135deg, var(--accent) 0 9px, #f4f4f7 9px 18px); }
 .pg .sec-k b { display: inline-block; background: var(--accent); color: #fff; font-size: clamp(30px, 4vw, 60px); padding: 10px 28px 10px 16px; clip-path: var(--slash-r); letter-spacing: -.02em; }
 .pg .sec { border-top: 0; position: relative; }
-.pg .sec::before { content: ''; position: absolute; top: 0; left: var(--pad); right: var(--pad); height: 1px; background: linear-gradient(90deg, var(--accent), rgba(244,244,247,.14) 22%); }
+.pg .sec::before { content: ''; position: absolute; top: 0; left: calc(var(--pad) + var(--rail-w, 0px)); right: var(--pad); height: 1px; background: linear-gradient(90deg, var(--accent), rgba(244,244,247,.14) 22%); }
 .pg .pbtn, .pg .act { border-radius: 0; clip-path: var(--slash-r); padding-right: 36px; }
 .pg .pbtn.ghost { border: 0; background: rgba(244,244,247,.1); }
 .pg .choice { border-radius: 0; border: 0; background: rgba(244,244,247,.07); padding: 0; clip-path: var(--slash-r); }
