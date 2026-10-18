@@ -504,3 +504,28 @@ $$\theta_{\text{screen}} = -\operatorname{atan2}(\Delta y, \Delta x) + \theta_{\
 1. **Live WebSockets Telemetry Bridge:** Implement a bidirectional WebSocket client connecting to OpenF1 / Live Timing transponders to stream live Sunday race data into the 25 Hz columnar store with sub-second latency.
 2. **WebGPU Monte Carlo Strategy Simulations:** Leverage WebGPU compute shaders on the client to simulate 100,000 randomized race progression scenarios (virtual pit stop windows, undercut probability, rain onset) in under $200\text{ ms}$.
 3. **3D Gaussian Splatting / Photogrammetric Track Recreation:** Upgrade the PixiJS 2D canvas with WebGPU 3D Gaussian Splatting, enabling users to switch from broadcast 2D map views to dynamic 3D trackside camera angles with pitch, roll, and realistic car yaw physics.
+
+---
+
+## 9. Visual Evidence Suite & Academic Figure Captions
+
+The following high-resolution figures ($1920 \times 1080\text{ px}$ at $2\times$ pixel density) are archived in the dedicated [`blackbook_figures/`](file:///c:/Users/samik/OneDrive/Documenti/F1%20project/f1-race-replay/blackbook_figures) directory for formal embedding into the university "Black Book" project report:
+
+### Figure 1: Implementation of System / Model
+- **File:** [`blackbook_figures/fig1_implementation_system.png`](file:///c:/Users/samik/OneDrive/Documenti/F1%20project/f1-race-replay/blackbook_figures/fig1_implementation_system.png)
+- **Target Section:** *Implementation of Model / System Design*
+- **Academic Caption:**  
+  *Figure 1: High-Fidelity 2D Replay Workspace and Telemetry Inspection Architecture.* The primary user interface renders deterministic 25 Hz car trajectory vectors and DRS activation corridors across the Suzuka International Racing Course using hardware-accelerated WebGL via `TrackRenderer.ts` and `PixiJS v8`. Synchronized against the `FrameStore` binary buffer, the broadcast timing tower reflects monotonic distance ranking while the real-time telemetry HUD exposes live pedal inputs, gear transponder telemetry, and online Bayesian state-space tire wear estimation ($\Delta \text{pace} = +0.03\text{ s/lap}$) for the selected driver.
+
+### Figure 2: Data Interpretation and Presentation
+- **File:** [`blackbook_figures/fig2_data_interpretation.png`](file:///c:/Users/samik/OneDrive/Documenti/F1%20project/f1-race-replay/blackbook_figures/fig2_data_interpretation.png)
+- **Target Section:** *Data Interpretation and Presentation*
+- **Academic Caption:**  
+  *Figure 2: Multi-Stint Tyre Strategy Matrix, Pace Evolution, and Race Control Feed.* The multi-panel analytical workstation displays full-session compound allocations and stint durations across a 53-lap Gantt matrix rendered via `TyreStrategyPanel.tsx` alongside outlier-filtered pace distributions extracted by `LapTimesTable.tsx`. Integrated real-time race direction logs capture discrete telemetry events (steward investigations, track limit violations, and local yellow flags) mapped synchronously against the global session timeline scrubber.
+
+### Figure 3: Pipeline, Math, or Simulation Insight
+- **File:** [`blackbook_figures/fig3_pipeline_or_model_insight.png`](file:///c:/Users/samik/OneDrive/Documenti/F1%20project/f1-race-replay/blackbook_figures/fig3_pipeline_or_model_insight.png)
+- **Target Section:** *Kinematic Pipeline & Mathematical Modeling Insights*
+- **Academic Caption:**  
+  *Figure 3: Qualifying Micro-Sector Classification and Stacked Distance Telemetry Profiles.* The comparative qualifying engine maps synchronized lap telemetry across high-density along-track distance bins, contrasting speed curves, throttle/brake applications, and benchmark time deltas ($\Delta t$ vs. VER) through multi-series `uPlot` canvas overlays. Micro-sector performance splits highlight discrete sector speed differentials and compound grip efficiency, ground-truthed against official Q3 timing transponder records.
+
