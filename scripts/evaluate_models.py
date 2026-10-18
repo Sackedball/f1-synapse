@@ -50,17 +50,25 @@ def load_or_fallback_dataset(
     """
     if os.path.exists(file_path):
         print(f"Loading {dataset_type} dataset from: {file_path}")
-        df = pd.read_csv(file_path)
-        if not df.empty:
-            print(f"Loaded {len(df)} samples ({df.get('circuit_id', pd.Series()).nunique()} unique circuits).")
-            return df
+        try:
+            df = pd.read_csv(file_path)
+            if not df.empty:
+                print(f"Loaded {len(df)} samples ({df.get('circuit_id', pd.Series()).nunique()} unique circuits).")
+                return df
+        except Exception as e:
+            print(f"Warning: Failed to load {file_path}: {e}")
 
-    print(f"Warning: {file_path} not found. Generating {n_fallback} synthetic samples for {dataset_type}...")
+    print(f"Warning: {file_path} not found or empty. Generating {n_fallback} synthetic samples for {dataset_type}...")
     if dataset_type == "overtake":
         df = generate_mock_overtake_dataset(n_samples=n_fallback)
     else:
         df = generate_mock_pit_dataset(n_samples=n_fallback)
-    print(f"Generated {len(df)} synthetic fallback samples.")
+
+    # Distribute fallback data across multiple circuits to enable LOCO validation
+    if "circuit_id" in df.columns and df["circuit_id"].nunique() < 2:
+        df["circuit_id"] = np.repeat([1, 2, 3], (len(df) // 3) + 1)[: len(df)]
+
+    print(f"Generated {len(df)} synthetic fallback samples across {df.get('circuit_id', pd.Series()).nunique()} unique circuits.")
     return df
 
 
@@ -230,6 +238,8 @@ def main() -> None:
     parser.add_argument("--reports-dir", type=str, default="reports", help="Directory to export JSON and Markdown reports")
     parser.add_argument("--cv-folds", type=int, default=None, help="Number of cross-validation folds (default: LOCO or auto)")
     args = parser.parse_args()
+    if args.cv_folds is not None and args.cv_folds < 2:
+        parser.error("--cv-folds must be an integer >= 2")
 
     print("=================================================================")
     print("      F1 SYNAPSE - STEP 6 MODEL EVALUATION PROTOCOL              ")

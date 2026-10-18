@@ -57,11 +57,20 @@ def compute_expected_calibration_error(
     y_true_arr = np.asarray(y_true, dtype=float)
     y_prob_arr = np.asarray(y_prob, dtype=float)
 
+    if len(y_true_arr) != len(y_prob_arr):
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{len(y_true_arr)}, {len(y_prob_arr)}]"
+        )
+
     n = len(y_prob_arr)
-    if n == 0 or len(y_true_arr) == 0:
+    if n == 0:
         return 0.0
 
-    y_prob_clipped = np.clip(y_prob_arr, 0.0, 1.0)
+    if n_bins < 1:
+        raise ValueError(f"n_bins must be a positive integer >= 1, got {n_bins}")
+
+    y_prob_clean = np.nan_to_num(y_prob_arr, nan=0.5)
+    y_prob_clipped = np.clip(y_prob_clean, 0.0, 1.0)
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     ece = 0.0
 
@@ -92,10 +101,16 @@ def compute_brier_score(
     y_true_arr = np.asarray(y_true, dtype=float)
     y_prob_arr = np.asarray(y_prob, dtype=float)
 
-    if len(y_prob_arr) == 0 or len(y_true_arr) == 0:
+    if len(y_true_arr) != len(y_prob_arr):
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{len(y_true_arr)}, {len(y_prob_arr)}]"
+        )
+
+    if len(y_prob_arr) == 0:
         return 0.0
 
-    y_prob_clipped = np.clip(y_prob_arr, 0.0, 1.0)
+    y_prob_clean = np.nan_to_num(y_prob_arr, nan=0.5)
+    y_prob_clipped = np.clip(y_prob_clean, 0.0, 1.0)
     return float(brier_score_loss(y_true_arr, y_prob_clipped))
 
 
@@ -110,7 +125,12 @@ def compute_pr_auc(
     y_true_arr = np.asarray(y_true)
     y_prob_arr = np.asarray(y_prob, dtype=float)
 
-    if len(y_true_arr) == 0 or len(y_prob_arr) == 0:
+    if len(y_true_arr) != len(y_prob_arr):
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{len(y_true_arr)}, {len(y_prob_arr)}]"
+        )
+
+    if len(y_true_arr) == 0:
         return 0.0
 
     unique_classes = np.unique(y_true_arr)
@@ -119,7 +139,8 @@ def compute_pr_auc(
         return 0.5
 
     try:
-        y_prob_clipped = np.clip(y_prob_arr, 0.0, 1.0)
+        y_prob_clean = np.nan_to_num(y_prob_arr, nan=0.5)
+        y_prob_clipped = np.clip(y_prob_clean, 0.0, 1.0)
         return float(average_precision_score(y_true_arr, y_prob_clipped))
     except Exception:
         return 0.5
@@ -136,7 +157,12 @@ def compute_roc_auc(
     y_true_arr = np.asarray(y_true)
     y_prob_arr = np.asarray(y_prob, dtype=float)
 
-    if len(y_true_arr) == 0 or len(y_prob_arr) == 0:
+    if len(y_true_arr) != len(y_prob_arr):
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{len(y_true_arr)}, {len(y_prob_arr)}]"
+        )
+
+    if len(y_true_arr) == 0:
         return 0.5
 
     unique_classes = np.unique(y_true_arr)
@@ -144,7 +170,8 @@ def compute_roc_auc(
         return 0.5
 
     try:
-        y_prob_clipped = np.clip(y_prob_arr, 0.0, 1.0)
+        y_prob_clean = np.nan_to_num(y_prob_arr, nan=0.5)
+        y_prob_clipped = np.clip(y_prob_clean, 0.0, 1.0)
         return float(roc_auc_score(y_true_arr, y_prob_clipped))
     except Exception:
         return 0.5
@@ -168,8 +195,17 @@ def compute_reliability_diagram_bins(
     y_true_arr = np.asarray(y_true, dtype=float)
     y_prob_arr = np.asarray(y_prob, dtype=float)
 
+    if len(y_true_arr) != len(y_prob_arr):
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{len(y_true_arr)}, {len(y_prob_arr)}]"
+        )
+
+    if n_bins < 1:
+        raise ValueError(f"n_bins must be a positive integer >= 1, got {n_bins}")
+
     n = len(y_prob_arr)
-    y_prob_clipped = np.clip(y_prob_arr, 0.0, 1.0) if n > 0 else np.array([])
+    y_prob_clean = np.nan_to_num(y_prob_arr, nan=0.5)
+    y_prob_clipped = np.clip(y_prob_clean, 0.0, 1.0) if n > 0 else np.array([])
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     bins: List[Dict[str, Any]] = []
 
@@ -292,12 +328,16 @@ def wrap_calibrated_classifier(
     base_model: Any,
     method: str = "isotonic",
     cv: Optional[Any] = None,
+    n_samples: Optional[int] = None,
 ) -> CalibratedClassifierCV:
     """
     Wraps prefit model with CalibratedClassifierCV supporting both sklearn <1.4 (cv='prefit')
     and sklearn >=1.4 (FrozenEstimator).
     """
     if FrozenEstimator is not None:
+        if cv is None and n_samples is not None and n_samples > 0:
+            idx = np.arange(n_samples)
+            cv = [(idx, idx)]
         kwargs: Dict[str, Any] = {"estimator": FrozenEstimator(base_model), "method": method}
         if cv is not None:
             kwargs["cv"] = cv
@@ -330,20 +370,21 @@ def leave_one_circuit_out_cv(
     Falls back to Stratified K-Fold (or standard K-Fold) when group count < 2.
     """
     n_samples = len(df)
-    if n_samples == 0:
+    if n_samples < 2:
         return
 
     # Check if group column is present with at least 2 distinct groups
     if group_col in df.columns:
-        unique_groups = df[group_col].nunique()
+        clean_groups = df[group_col].map(lambda x: "UNKNOWN_GROUP" if pd.isna(x) else str(x))
+        unique_groups = clean_groups.nunique()
         if unique_groups >= 2:
             if n_splits is not None and n_splits < unique_groups:
-                cv = GroupKFold(n_splits=n_splits)
-                yield from cv.split(df, groups=df[group_col])
+                cv = GroupKFold(n_splits=max(2, n_splits))
+                yield from cv.split(df, groups=clean_groups)
                 return
             else:
                 logo = LeaveOneGroupOut()
-                yield from logo.split(df, groups=df[group_col])
+                yield from logo.split(df, groups=clean_groups)
                 return
 
     # Fallback to Stratified K-Fold / K-Fold
@@ -355,15 +396,18 @@ def leave_one_circuit_out_cv(
             if n_splits is not None:
                 k = min(n_splits, n_samples)
             k = min(k, min_class_count)
-            skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
-            yield from skf.split(df, y)
-            return
+            if k >= 2:
+                skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+                yield from skf.split(df, y)
+                return
 
     k = min(5, max(2, n_samples))
     if n_splits is not None:
         k = min(n_splits, n_samples)
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    yield from kf.split(df)
+    k = max(2, min(k, n_samples))
+    if k >= 2 and n_samples >= k:
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+        yield from kf.split(df)
 
 
 def leave_one_season_out_cv(
@@ -377,19 +421,20 @@ def leave_one_season_out_cv(
     Falls back to Stratified K-Fold (or standard K-Fold) when group count < 2.
     """
     n_samples = len(df)
-    if n_samples == 0:
+    if n_samples < 2:
         return
 
     if season_col in df.columns:
-        unique_groups = df[season_col].nunique()
+        clean_groups = df[season_col].map(lambda x: "UNKNOWN_SESSION" if pd.isna(x) else str(x))
+        unique_groups = clean_groups.nunique()
         if unique_groups >= 2:
             if n_splits is not None and n_splits < unique_groups:
-                cv = GroupKFold(n_splits=n_splits)
-                yield from cv.split(df, groups=df[season_col])
+                cv = GroupKFold(n_splits=max(2, n_splits))
+                yield from cv.split(df, groups=clean_groups)
                 return
             else:
                 logo = LeaveOneGroupOut()
-                yield from logo.split(df, groups=df[season_col])
+                yield from logo.split(df, groups=clean_groups)
                 return
 
     # Fallback to Stratified K-Fold / K-Fold
@@ -401,15 +446,18 @@ def leave_one_season_out_cv(
             if n_splits is not None:
                 k = min(n_splits, n_samples)
             k = min(k, min_class_count)
-            skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
-            yield from skf.split(df, y)
-            return
+            if k >= 2:
+                skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+                yield from skf.split(df, y)
+                return
 
     k = min(5, max(2, n_samples))
     if n_splits is not None:
         k = min(n_splits, n_samples)
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    yield from kf.split(df)
+    k = max(2, min(k, n_samples))
+    if k >= 2 and n_samples >= k:
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+        yield from kf.split(df)
 
 
 # ---------------------------------------------------------------------------
@@ -435,6 +483,10 @@ def heuristic_overtake_predict(df: pd.DataFrame) -> np.ndarray:
     else:
         drs = np.zeros(len(df), dtype=float)
 
+    delta_s = np.nan_to_num(delta_s, nan=20.0)
+    delta_v = np.nan_to_num(delta_v, nan=0.0)
+    drs = np.nan_to_num(drs, nan=0.0)
+
     z = 0.12 * delta_v - 0.08 * delta_s + 0.8 * drs - 1.5
     z_clipped = np.clip(z, -50.0, 50.0)
     p = 1.0 / (1.0 + np.exp(-z_clipped))
@@ -457,11 +509,15 @@ def heuristic_pit_predict(df: pd.DataFrame) -> np.ndarray:
     else:
         prog = np.full(len(df), 0.5, dtype=float)
 
-    prog_safe = np.clip(np.maximum(0.0, prog), 0.0, 2.5)
+    prog_clean = np.nan_to_num(prog, nan=0.5)
+    prog_safe = np.clip(np.maximum(0.0, prog_clean), 0.0, 2.5)
     sc = df["sc_active"].to_numpy(dtype=float) if "sc_active" in df.columns else np.zeros(len(df))
     vsc = df["vsc_active"].to_numpy(dtype=float) if "vsc_active" in df.columns else np.zeros(len(df))
 
-    p = (prog_safe ** 2.5) * 0.5 + 0.4 * sc + 0.2 * vsc
+    sc_clean = np.nan_to_num(sc, nan=0.0)
+    vsc_clean = np.nan_to_num(vsc, nan=0.0)
+
+    p = (prog_safe ** 2.5) * 0.5 + 0.4 * sc_clean + 0.2 * vsc_clean
     return np.clip(p, 0.01, 0.99)
 
 
@@ -582,18 +638,22 @@ def benchmark_overtake_models(
         oof_t1.extend(p_t1.tolist())
 
         # ---------------- Tier 2: Uncalibrated Booster ----------------
-        model_t2 = lgb.LGBMClassifier(
-            n_estimators=100,
-            learning_rate=0.05,
-            max_depth=5,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            random_state=random_state,
-            n_jobs=-1,
-            verbose=-1,
-        )
-        model_t2.fit(X_train[OVERTAKE_FEATURE_COLUMNS], y_train)
-        p_t2 = model_t2.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])[:, 1]
+        if len(np.unique(y_train)) >= 2:
+            model_t2 = lgb.LGBMClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.85,
+                colsample_bytree=0.85,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=-1,
+            )
+            model_t2.fit(X_train[OVERTAKE_FEATURE_COLUMNS], y_train)
+            preds_t2 = model_t2.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])
+            p_t2 = preds_t2[:, 1] if preds_t2.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+        else:
+            p_t2 = np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
         oof_t2.extend(p_t2.tolist())
 
         # ---------------- Tier 3: Calibrated Monotone Physics ----------------
@@ -601,34 +661,59 @@ def benchmark_overtake_models(
         n_neg = int(np.sum(y_train == 0))
         min_class = min(n_pos, n_neg)
 
+        p_t3 = None
         if min_class >= 2:
             inner_splits = min(4, min_class)
             inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=random_state)
             tr_sub_idx, cal_sub_idx = next(inner_cv.split(X_train, y_train))
             X_tr, y_tr = X_train.iloc[tr_sub_idx], y_train[tr_sub_idx]
             X_cal, y_cal = X_train.iloc[cal_sub_idx], y_train[cal_sub_idx]
-        else:
-            X_tr, y_tr = X_train, y_train
-            X_cal, y_cal = X_train, y_train
 
-        focal_w = compute_balanced_focal_weights(y_tr)
-        model_t3_base = lgb.LGBMClassifier(
-            n_estimators=100,
-            learning_rate=0.05,
-            max_depth=5,
-            subsample=0.85,
-            colsample_bytree=0.85,
-            monotone_constraints=monotone_constraints,
-            random_state=random_state,
-            n_jobs=-1,
-            verbose=-1,
-        )
-        model_t3_base.fit(X_tr[OVERTAKE_FEATURE_COLUMNS], y_tr, sample_weight=focal_w)
-        min_cal_class = min(int(np.sum(y_cal == 1)), int(np.sum(y_cal == 0)))
-        cal_cv = min(5, min_cal_class) if min_cal_class >= 2 else None
-        cal_t3 = wrap_calibrated_classifier(model_t3_base, method="isotonic", cv=cal_cv)
-        cal_t3.fit(X_cal[OVERTAKE_FEATURE_COLUMNS], y_cal)
-        p_t3 = cal_t3.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])[:, 1]
+            focal_w = compute_balanced_focal_weights(y_tr)
+            model_t3_base = lgb.LGBMClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.85,
+                colsample_bytree=0.85,
+                monotone_constraints=monotone_constraints,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=-1,
+            )
+            model_t3_base.fit(X_tr[OVERTAKE_FEATURE_COLUMNS], y_tr, sample_weight=focal_w)
+
+            if len(np.unique(y_cal)) >= 2:
+                try:
+                    cal_t3 = wrap_calibrated_classifier(model_t3_base, method="isotonic", n_samples=len(X_cal))
+                    cal_t3.fit(X_cal[OVERTAKE_FEATURE_COLUMNS], y_cal)
+                    preds_cal = cal_t3.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])
+                    if preds_cal.shape[1] >= 2:
+                        p_t3 = preds_cal[:, 1]
+                except Exception:
+                    p_t3 = None
+
+            if p_t3 is None:
+                preds_base = model_t3_base.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])
+                p_t3 = preds_base[:, 1] if preds_base.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_tr[0] == 0 else 0.999)
+        elif min_class == 1:
+            model_t3_base = lgb.LGBMClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.85,
+                colsample_bytree=0.85,
+                monotone_constraints=monotone_constraints,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=-1,
+            )
+            model_t3_base.fit(X_train[OVERTAKE_FEATURE_COLUMNS], y_train)
+            preds_base = model_t3_base.predict_proba(X_val[OVERTAKE_FEATURE_COLUMNS])
+            p_t3 = preds_base[:, 1] if preds_base.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+        else:
+            p_t3 = np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+
         oof_t3.extend(p_t3.tolist())
 
     y_all = np.array(oof_y)
@@ -696,18 +781,22 @@ def benchmark_pit_models(
         oof_t1.extend(p_t1.tolist())
 
         # ---------------- Tier 2: Uncalibrated Booster ----------------
-        model_t2 = XGBClassifier(
-            n_estimators=100,
-            learning_rate=0.05,
-            max_depth=5,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            eval_metric="logloss",
-            random_state=random_state,
-            n_jobs=-1,
-        )
-        model_t2.fit(X_train[PIT_FEATURE_COLUMNS], y_train)
-        p_t2 = model_t2.predict_proba(X_val[PIT_FEATURE_COLUMNS])[:, 1]
+        if len(np.unique(y_train)) >= 2:
+            model_t2 = XGBClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                eval_metric="logloss",
+                random_state=random_state,
+                n_jobs=-1,
+            )
+            model_t2.fit(X_train[PIT_FEATURE_COLUMNS], y_train)
+            preds_t2 = model_t2.predict_proba(X_val[PIT_FEATURE_COLUMNS])
+            p_t2 = preds_t2[:, 1] if preds_t2.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+        else:
+            p_t2 = np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
         oof_t2.extend(p_t2.tolist())
 
         # ---------------- Tier 3: Calibrated Monotone Physics ----------------
@@ -715,33 +804,58 @@ def benchmark_pit_models(
         n_neg = int(np.sum(y_train == 0))
         min_class = min(n_pos, n_neg)
 
+        p_t3 = None
         if min_class >= 2:
             inner_splits = min(4, min_class)
             inner_cv = StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=random_state)
             tr_sub_idx, cal_sub_idx = next(inner_cv.split(X_train, y_train))
             X_tr, y_tr = X_train.iloc[tr_sub_idx], y_train[tr_sub_idx]
             X_cal, y_cal = X_train.iloc[cal_sub_idx], y_train[cal_sub_idx]
-        else:
-            X_tr, y_tr = X_train, y_train
-            X_cal, y_cal = X_train, y_train
 
-        model_t3_base = XGBClassifier(
-            n_estimators=100,
-            learning_rate=0.05,
-            max_depth=5,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            monotone_constraints=monotone_constraints,
-            eval_metric="logloss",
-            random_state=random_state,
-            n_jobs=-1,
-        )
-        model_t3_base.fit(X_tr[PIT_FEATURE_COLUMNS], y_tr)
-        min_cal_class = min(int(np.sum(y_cal == 1)), int(np.sum(y_cal == 0)))
-        cal_cv = min(5, min_cal_class) if min_cal_class >= 2 else None
-        cal_t3 = wrap_calibrated_classifier(model_t3_base, method="isotonic", cv=cal_cv)
-        cal_t3.fit(X_cal[PIT_FEATURE_COLUMNS], y_cal)
-        p_t3 = cal_t3.predict_proba(X_val[PIT_FEATURE_COLUMNS])[:, 1]
+            model_t3_base = XGBClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                monotone_constraints=monotone_constraints,
+                eval_metric="logloss",
+                random_state=random_state,
+                n_jobs=-1,
+            )
+            model_t3_base.fit(X_tr[PIT_FEATURE_COLUMNS], y_tr)
+
+            if len(np.unique(y_cal)) >= 2:
+                try:
+                    cal_t3 = wrap_calibrated_classifier(model_t3_base, method="isotonic", n_samples=len(X_cal))
+                    cal_t3.fit(X_cal[PIT_FEATURE_COLUMNS], y_cal)
+                    preds_cal = cal_t3.predict_proba(X_val[PIT_FEATURE_COLUMNS])
+                    if preds_cal.shape[1] >= 2:
+                        p_t3 = preds_cal[:, 1]
+                except Exception:
+                    p_t3 = None
+
+            if p_t3 is None:
+                preds_base = model_t3_base.predict_proba(X_val[PIT_FEATURE_COLUMNS])
+                p_t3 = preds_base[:, 1] if preds_base.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_tr[0] == 0 else 0.999)
+        elif min_class == 1:
+            model_t3_base = XGBClassifier(
+                n_estimators=100,
+                learning_rate=0.05,
+                max_depth=5,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                monotone_constraints=monotone_constraints,
+                eval_metric="logloss",
+                random_state=random_state,
+                n_jobs=-1,
+            )
+            model_t3_base.fit(X_train[PIT_FEATURE_COLUMNS], y_train)
+            preds_base = model_t3_base.predict_proba(X_val[PIT_FEATURE_COLUMNS])
+            p_t3 = preds_base[:, 1] if preds_base.shape[1] >= 2 else np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+        else:
+            p_t3 = np.full(len(X_val), 0.001 if y_train[0] == 0 else 0.999)
+
         oof_t3.extend(p_t3.tolist())
 
     y_all = np.array(oof_y)

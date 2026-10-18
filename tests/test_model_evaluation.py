@@ -436,3 +436,136 @@ def test_format_benchmark_markdown_table():
     assert "| Model Tier | ROC-AUC | PR-AUC | Brier Score (lower is better) | ECE (lower is better) |" in table
     assert "| Tier 1: Domain Heuristic Baseline | 0.7500 | 0.6000 | 0.1800 | 0.1000 |" in table
     assert "| Tier 2: Uncalibrated Booster Baseline | 0.8500 | 0.7200 | 0.1400 | 0.0800 |" in table
+
+
+# ---------------------------------------------------------------------------
+# 6. Edge Cases & Robustness Tests
+# ---------------------------------------------------------------------------
+
+def test_metric_functions_mismatched_lengths():
+    """Verify all metric functions raise ValueError when input lengths are inconsistent."""
+    y_true = [1, 0, 1]
+    y_prob = [0.8, 0.2]
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_expected_calibration_error(y_true, y_prob)
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_brier_score(y_true, y_prob)
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_pr_auc(y_true, y_prob)
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_roc_auc(y_true, y_prob)
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_reliability_diagram_bins(y_true, y_prob)
+
+
+def test_metric_functions_invalid_bins():
+    """Verify binning functions raise ValueError when n_bins < 1."""
+    with pytest.raises(ValueError, match="n_bins must be a positive integer >= 1"):
+        compute_expected_calibration_error([1, 0], [0.8, 0.2], n_bins=0)
+
+    with pytest.raises(ValueError, match="n_bins must be a positive integer >= 1"):
+        compute_reliability_diagram_bins([1, 0], [0.8, 0.2], n_bins=-1)
+
+
+def test_domain_heuristics_nan_inputs():
+    """Verify domain heuristics gracefully handle NaN inputs without propagating NaNs."""
+    df_ot = pd.DataFrame({
+        "delta_s": [np.nan, 10.0, 30.0],
+        "delta_v": [5.0, np.nan, -5.0],
+        "drs_active": [1, 0, np.nan],
+    })
+    p_ot = heuristic_overtake_predict(df_ot)
+    assert len(p_ot) == 3
+    assert not np.any(np.isnan(p_ot))
+    assert np.all((p_ot >= 0.0) & (p_ot <= 1.0))
+
+    df_pit = pd.DataFrame({
+        "stint_progression_ratio": [np.nan, 0.8, 1.2],
+        "sc_active": [0, np.nan, 1],
+        "vsc_active": [np.nan, 0, 0],
+    })
+    p_pit = heuristic_pit_predict(df_pit)
+    assert len(p_pit) == 3
+    assert not np.any(np.isnan(p_pit))
+    assert np.all((p_pit >= 0.0) & (p_pit <= 1.0))
+
+
+def test_cv_splitters_edge_cases():
+    """Verify LOCO/LOSO CV generators handle empty, single-sample, NaN-group, and missing columns."""
+    # 1. Zero or one sample
+    assert list(leave_one_circuit_out_cv(pd.DataFrame())) == []
+    assert list(leave_one_circuit_out_cv(pd.DataFrame({"circuit_id": [1], "target_overtake": [1]}))) == []
+    assert list(leave_one_season_out_cv(pd.DataFrame({"session_id": ["A"], "target_pit": [0]}))) == []
+
+    # 2. NaN in group column
+    df_nan_groups = pd.DataFrame({
+        "circuit_id": [1, None, 2, np.nan],
+        "target_overtake": [0, 1, 0, 1],
+    })
+    splits = list(leave_one_circuit_out_cv(df_nan_groups))
+    assert len(splits) >= 2
+    for train_idx, val_idx in splits:
+        assert len(train_idx) > 0 and len(val_idx) > 0
+
+    # 3. Missing group column
+    df_no_group = pd.DataFrame({
+        "other_col": [1, 2, 3, 4],
+        "target_overtake": [0, 1, 0, 1],
+    })
+    splits_fallback = list(leave_one_circuit_out_cv(df_no_group, group_col="circuit_id"))
+    assert len(splits_fallback) >= 2
+
+
+def test_benchmark_overtake_models_extreme_class_imbalance():
+    """Verify benchmark_overtake_models does not crash on extreme class imbalance (1 positive sample)."""
+    df = pd.DataFrame({
+        "circuit_id": [1] * 50 + [2] * 50,
+        "delta_s": [10.0] * 100,
+        "delta_v": [0.0] * 100,
+        "euclidean_dist": [10.0] * 100,
+        "drs_active": [0] * 100,
+        "mean_throttle": [80.0] * 100,
+        "throttle_jerk": [0.0] * 100,
+        "mean_brake": [0.0] * 100,
+        "brake_onset_delta": [0.0] * 100,
+        "tyre_age_delta": [0.0] * 100,
+        "compound_delta": [0.0] * 100,
+        "clean_air_pace_diff": [0.0] * 100,
+        "dist_to_next_heavy_braking": [100.0] * 100,
+        "straight_fraction_remaining": [0.5] * 100,
+        "curvature": [0.005] * 100,
+        "target_overtake": [1] * 1 + [0] * 99,
+    })
+    report = benchmark_overtake_models(df, n_splits=2)
+    assert isinstance(report, BenchmarkReport)
+    assert "Tier 1: Domain Heuristic Baseline" in report.metrics
+    assert "Tier 2: Uncalibrated Booster Baseline" in report.metrics
+    assert "Tier 3: Calibrated Monotone Physics Model" in report.metrics
+
+
+def test_benchmark_pit_models_extreme_class_imbalance():
+    """Verify benchmark_pit_models does not crash on extreme class imbalance (1 positive sample)."""
+    df = pd.DataFrame({
+        "circuit_id": [1] * 50 + [2] * 50,
+        "tyre_life": [10] * 100,
+        "tyre_compound": [1.0] * 100,
+        "stint_progression_ratio": [0.5] * 100,
+        "fuel_corrected_degradation_slope": [0.03] * 100,
+        "pit_loss_delta": [0.0] * 100,
+        "traffic_rejoin_gap": [5.0] * 100,
+        "sc_active": [0] * 100,
+        "vsc_active": [0] * 100,
+        "lap_number": [15] * 100,
+        "target_pit": [1] * 1 + [0] * 99,
+    })
+    report = benchmark_pit_models(df, n_splits=2)
+    assert isinstance(report, BenchmarkReport)
+    assert "Tier 1: Domain Heuristic Baseline" in report.metrics
+    assert "Tier 2: Uncalibrated Booster Baseline" in report.metrics
+    assert "Tier 3: Calibrated Monotone Physics Model" in report.metrics
+
