@@ -80,7 +80,6 @@ export const DistanceChart: React.FC<DistanceChartProps> = ({
     const opts: uPlot.Options = {
       width,
       height,
-      title: title || undefined,
       cursor: {
         points: { size: 6 },
       },
@@ -211,20 +210,32 @@ export const DistanceChart: React.FC<DistanceChartProps> = ({
   }, [currentDist]);
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative w-full overflow-hidden select-none ${className || ''}`}
-      style={{ height }}
-    >
+    <div className={`flex flex-col w-full select-none ${className || ''}`}>
+      {title && (
+        <div className="flex justify-between items-center text-[11px] font-mono font-bold tracking-wider text-[var(--text-2)] mb-1 px-1">
+          <span>{title}</span>
+          {currentDist !== undefined && currentDist >= 0 && (
+            <span className="text-[10px] text-[var(--text-3)] font-normal">
+              @ {Math.round(currentDist)}m
+            </span>
+          )}
+        </div>
+      )}
       <div
-        ref={needleRef}
-        className="absolute pointer-events-none w-[2px] z-10 hidden"
-        style={{
-          backgroundColor: chartColors.accent,
-          boxShadow: `0 0 6px ${chartColors.accent}`,
-          transition: 'none',
-        }}
-      />
+        ref={containerRef}
+        className="relative w-full overflow-hidden"
+        style={{ height }}
+      >
+        <div
+          ref={needleRef}
+          className="absolute pointer-events-none w-[2px] z-10 hidden"
+          style={{
+            backgroundColor: chartColors.accent,
+            boxShadow: `0 0 6px ${chartColors.accent}`,
+            transition: 'none',
+          }}
+        />
+      </div>
     </div>
   );
 };

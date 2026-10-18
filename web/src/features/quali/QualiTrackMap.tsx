@@ -26,7 +26,7 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
       return '-3000 -3000 6000 6000';
     }
     const { minX, minY, maxX, maxY } = track.bounds;
-    const padding = 300;
+    const padding = Math.max(maxX - minX, maxY - minY) * 0.08;
     const width = maxX - minX + padding * 2;
     const height = maxY - minY + padding * 2;
     return `${minX - padding} ${minY - padding} ${width} ${height}`;
@@ -44,6 +44,25 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
     return d;
   }, [track]);
 
+  // Scale dimensions proportionally to track width
+  const scaleDims = useMemo(() => {
+    if (!track || !track.bounds) {
+      return { outline: 220, center: 70, finish: 120, halo: 320, disc: 200, stroke: 40, text: 160 };
+    }
+    const { minX, maxX } = track.bounds;
+    const width = maxX - minX;
+    const base = width * 0.018;
+    return {
+      outline: Math.max(36, base * 1.8),
+      center: Math.max(14, base * 0.75),
+      finish: Math.max(20, base * 1.2),
+      halo: Math.max(50, base * 3.0),
+      disc: Math.max(30, base * 1.8),
+      stroke: Math.max(6, base * 0.4),
+      text: Math.max(20, base * 1.3),
+    };
+  }, [track]);
+
   return (
     <div className={`relative w-full h-full flex items-center justify-center ${className}`}>
       <svg
@@ -57,7 +76,7 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
             d={pathD}
             fill="none"
             stroke="var(--surface-3)"
-            strokeWidth="32"
+            strokeWidth={scaleDims.outline}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -69,7 +88,7 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
             d={pathD}
             fill="none"
             stroke="var(--border-strong)"
-            strokeWidth="12"
+            strokeWidth={scaleDims.center}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -80,7 +99,7 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
           <circle
             cx={track.centerline[0][0]}
             cy={track.centerline[0][1]}
-            r="16"
+            r={scaleDims.finish}
             fill="var(--accent)"
           />
         )}
@@ -89,14 +108,14 @@ export const QualiTrackMap: React.FC<QualiTrackMapProps> = ({
         {drivers.map((drv) => (
           <g key={drv.code} transform={`translate(${drv.x}, ${drv.y})`}>
             {/* Halo pulse */}
-            <circle r="44" fill={drv.color} opacity="0.25" />
+            <circle r={scaleDims.halo} fill={drv.color} opacity="0.35" />
             {/* Outer disc */}
-            <circle r="28" fill="var(--surface-0)" stroke={drv.color} strokeWidth="6" />
+            <circle r={scaleDims.disc} fill="var(--surface-0)" stroke={drv.color} strokeWidth={scaleDims.stroke} />
             {/* Driver Code text (un-flipped) */}
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="20"
+              fontSize={scaleDims.text}
               fontFamily="var(--font-mono)"
               fontWeight="900"
               fill="var(--text-1)"

@@ -62,6 +62,29 @@ test.describe('Black Book Evidence Capture Script', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table', { timeout: 10000 });
     await page.waitForTimeout(800);
+
+    // Scrub lap slider to mid-lap (36.5s) to capture dynamic speed curves, diverging deltas, and track car positions
+    await page.evaluate(() => {
+      const input = document.querySelector('input[aria-label="Qualifying Lap Telemetry Scrubber"]') as HTMLInputElement;
+      if (input) {
+        const proto = window.HTMLInputElement.prototype;
+        const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+        if (nativeSetter) {
+          nativeSetter.call(input, '36.5');
+        } else {
+          input.value = '36.5';
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    await page.evaluate(() => {
+      const el = document.querySelector('.pg-q');
+      if (el) el.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(500);
+
     await page.screenshot({ path: path.join(blackBookEvidenceDir, 'qualifying-results.png') });
     await page.screenshot({ path: path.join(blackBookFiguresDir, 'fig3_pipeline_or_model_insight.png') });
 

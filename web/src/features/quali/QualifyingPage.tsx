@@ -236,7 +236,9 @@ export const QualifyingPage: React.FC = () => {
       if (time[mid] < currentTime) low = mid + 1;
       else high = mid;
     }
-    return distance[low] || 0;
+    const rawDist = distance[low] || 0;
+    const maxD = distance[distance.length - 1] || 0;
+    return maxD > 12000 ? rawDist * 0.1 : rawDist;
   }, [benchmark, currentTime]);
 
   // Compute map markers for cars along track
@@ -266,7 +268,12 @@ export const QualifyingPage: React.FC = () => {
   // 6. Build chart data arrays
   const chartDistanceGrid = useMemo(() => {
     if (activeTelemetries.length === 0) return [];
-    return activeTelemetries[0].telem.distance || [];
+    const raw = activeTelemetries[0].telem.distance || [];
+    const maxD = raw.length > 0 ? raw[raw.length - 1] : 0;
+    if (maxD > 12000) {
+      return raw.map((d) => d * 0.1);
+    }
+    return raw;
   }, [activeTelemetries]);
 
   // Speed Chart Data
@@ -340,13 +347,15 @@ export const QualifyingPage: React.FC = () => {
       <PageNav section="QUALIFYING" to="/" backTestId="quali-back-btn" />
 
       <section className="q-hero">
-        <div className="q-kick">{results ? `${results.circuitName} · ${selectedSegment}` : 'LOADING SESSION'}</div>
-        <h1 className="q-title"><SplitRise key={eventTitle} text={eventTitle} play={intro} step={34} /></h1>
+        <div>
+          <div className="q-kick">{results ? `${results.circuitName} · ${selectedSegment}` : 'LOADING SESSION'}</div>
+          <h1 className="q-title"><SplitRise key={eventTitle} text={eventTitle} play={true} step={34} /></h1>
+        </div>
         {results?.poleDriver && (
           <div className="q-pole" data-cursor="hide">
-            <span className="q-pole-k">POLE</span>
+            <span className="q-pole-k">POLE POSITION</span>
             <span className="q-pole-c">{results.poleDriver}</span>
-            <Scramble className="q-pole-t" text={formatLapTime(results.poleLap)} play={intro} />
+            <Scramble className="q-pole-t" text={formatLapTime(results.poleLap)} play={true} />
           </div>
         )}
       </section>
@@ -567,11 +576,11 @@ export const QualifyingPage: React.FC = () => {
           </div>
 
           {/* Right Column: Stacked Charts & Mini Map (7 cols) */}
-          <div className="lg:col-span-7 space-y-5">
+          <div className="lg:col-span-7 space-y-4">
             {/* Top: Mini Map + Live Stats Strip */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-4 flex flex-col items-center justify-center min-h-[220px]">
-                <div className="w-full flex justify-between items-center text-xs font-mono text-[var(--text-3)] mb-2">
+              <Card className="p-3.5 flex flex-col items-center justify-center min-h-[175px]">
+                <div className="w-full flex justify-between items-center text-xs font-mono text-[var(--text-3)] mb-1">
                   <span>CIRCUIT MINI-MAP</span>
                   <span className="text-[var(--accent)] font-bold">{Math.round(currentDistance)} m</span>
                 </div>
@@ -579,22 +588,25 @@ export const QualifyingPage: React.FC = () => {
                   track={track}
                   drivers={mapDriverMarkers}
                   cursorDist={currentDistance}
-                  className="w-full h-[180px]"
+                  className="w-full h-[145px]"
                 />
               </Card>
 
               {/* Selected Drivers Live Snapshot at Cursor */}
-              <Card className="p-4 space-y-3">
+              <Card className="p-3.5 space-y-2.5">
                 <div className="text-xs font-mono text-[var(--text-3)] pb-1 border-b border-[var(--border)]">
                   TELEMETRY AT DISTANCE: {Math.round(currentDistance)} m
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {activeTelemetries.map(({ code, telem, color }) => {
-                    const maxDist = telem.distance.length > 0 ? telem.distance[telem.distance.length - 1] : 5807;
-                    const idx = Math.min(
-                      Math.max(0, Math.floor((currentDistance / (maxDist || 1)) * (telem.speed.length - 1))),
-                      telem.speed.length - 1,
-                    );
+                    let low = 0;
+                    let high = telem.time.length - 1;
+                    while (low < high) {
+                      const mid = Math.floor((low + high) / 2);
+                      if (telem.time[mid] < currentTime) low = mid + 1;
+                      else high = mid;
+                    }
+                    const idx = low;
                     const sp = telem.speed[idx] ?? 0;
                     const gr = telem.gear[idx] ?? 0;
                     const th = telem.throttle[idx] ?? 0;
@@ -603,13 +615,13 @@ export const QualifyingPage: React.FC = () => {
                     return (
                       <div
                         key={code}
-                        className="p-2 bg-[var(--surface-2)] rounded border border-[var(--border)] flex items-center justify-between text-xs font-mono"
+                        className="p-1.5 bg-[var(--surface-2)] rounded border border-[var(--border)] flex items-center justify-between text-xs font-mono"
                       >
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
                           <span className="font-bold text-[var(--text-1)]">{code}</span>
                         </div>
-                        <div className="flex items-center gap-4 text-[11px]">
+                        <div className="flex items-center gap-3.5 text-[11px]">
                           <span>
                             SPD: <strong className="text-[var(--text-1)]">{formatSpeed(sp, settings.units)}</strong>
                           </span>
@@ -631,7 +643,7 @@ export const QualifyingPage: React.FC = () => {
             </div>
 
             {/* Stacked Telemetry Charts */}
-            <Card className="p-4 space-y-6">
+            <Card className="p-3.5 space-y-4">
               {/* Speed Comparison Chart */}
               <div>
                 <DistanceChart
@@ -642,7 +654,7 @@ export const QualifyingPage: React.FC = () => {
                     stroke: d.color,
                     width: 2,
                   }))}
-                  height={150}
+                  height={130}
                   currentDist={currentDistance}
                   yUnit=""
                 />
@@ -659,7 +671,7 @@ export const QualifyingPage: React.FC = () => {
                       stroke: d.color,
                       width: 2,
                     }))}
-                    height={130}
+                    height={110}
                     currentDist={currentDistance}
                     yUnit="s"
                   />
@@ -676,7 +688,7 @@ export const QualifyingPage: React.FC = () => {
                     stroke: d.color,
                     width: 1.5,
                   }))}
-                  height={110}
+                  height={95}
                   yMin={1}
                   yMax={8}
                   currentDist={currentDistance}
@@ -692,7 +704,7 @@ export const QualifyingPage: React.FC = () => {
                     { label: `${d.code} Thr`, stroke: d.color, width: 1.5 },
                     { label: `${d.code} Brk`, stroke: '#e8002d', width: 1.5, dash: [4, 4] },
                   ])}
-                  height={130}
+                  height={110}
                   yMin={0}
                   yMax={100}
                   currentDist={currentDistance}

@@ -1,16 +1,26 @@
 .pg-q { --surface-0: #07070a; --surface-1: #0c0c11; --surface-2: #13131a; --border: rgba(236,232,223,.14); }
-.q-hero { position: relative; padding: 20vh var(--pad) 5vh; display: grid; gap: 18px; overflow: hidden; }
-.q-kick { font: 600 11px var(--font-mono); letter-spacing: .3em; color: rgba(236,232,223,.55); }
-.q-title { font: 900 clamp(64px, 15vw, 260px)/.8 var(--font-display); letter-spacing: -.055em; text-transform: uppercase; }
-.q-pole { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 12px; }
-.q-pole-k { font: 600 11px var(--font-mono); letter-spacing: .3em; color: var(--best); }
-.q-pole-c { font: 900 clamp(28px, 4vw, 56px) var(--font-display); }
-.q-pole-t { font: 800 clamp(36px, 6vw, 96px) var(--font-display); color: var(--best); letter-spacing: -.03em; text-shadow: 0 0 40px rgba(177,56,221,.45); }
-.q-main { padding: 2vh var(--pad) 10vh; display: grid; gap: 28px; max-width: 1840px; width: 100%; margin: 0 auto; }
+.q-hero {
+  position: relative;
+  margin-top: 56px;
+  padding: 12px var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.q-kick { font: 600 10px var(--font-mono); letter-spacing: .25em; color: rgba(236,232,223,.55); text-transform: uppercase; margin-bottom: 2px; }
+.q-title { font: 900 28px/1.1 var(--font-display); letter-spacing: -.02em; text-transform: uppercase; }
+.q-pole { display: flex; align-items: center; gap: 12px; background: rgba(177,56,221,.08); border: 1px solid rgba(177,56,221,.25); border-radius: 6px; padding: 4px 14px; }
+.q-pole-k { font: 700 10px var(--font-mono); letter-spacing: .25em; color: var(--best); }
+.q-pole-c { font: 900 18px var(--font-display); }
+.q-pole-t { font: 800 20px var(--font-display); color: var(--best); letter-spacing: -.02em; text-shadow: 0 0 15px rgba(177,56,221,.45); }
+.q-main { padding: 10px var(--pad) 20px; display: grid; gap: 12px; max-width: 1840px; width: 100%; margin: 0 auto; }
 .q-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .q-hint { font: 500 10px var(--font-mono); letter-spacing: .26em; color: rgba(236,232,223,.4); }
 .q-drivers { display: flex; flex-wrap: wrap; gap: 8px; }
-.drv { position: relative; overflow: hidden; padding: 14px 22px; border: 1px solid var(--border); border-radius: 4px; font: 900 15px var(--font-display); letter-spacing: .04em; color: rgba(236,232,223,.6); isolation: isolate; animation: rowin .8s var(--ease-expo) both; animation-delay: calc(var(--i) * 45ms); transition: color .3s, border-color .3s; }
+.drv { position: relative; overflow: hidden; padding: 10px 18px; border: 1px solid var(--border); border-radius: 4px; font: 900 14px var(--font-display); letter-spacing: .04em; color: rgba(236,232,223,.6); isolation: isolate; animation: rowin .8s var(--ease-expo) both; animation-delay: calc(var(--i) * 45ms); transition: color .3s, border-color .3s; }
 .drv::before { content: ''; position: absolute; inset: 0; background: var(--c); transform: scaleX(0); transform-origin: left; transition: transform .6s var(--ease-expo); z-index: -1; }
 .drv::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
 .drv:hover { color: #fff; border-color: var(--c); }
