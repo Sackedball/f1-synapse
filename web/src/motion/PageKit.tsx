@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Wordmark } from '@/components/ui/Wordmark';
 import { useCurtain } from './Curtain';
 import { useMagnetic } from './useMagnetic';
-import { SplitRise, useInView } from './Kinetic';
+import { SplitRise, ProximityText, useInView } from './Kinetic';
 import { useMotionStore } from './store';
 import './page.css';
 
@@ -33,16 +33,22 @@ export const Reveal: React.FC<{ children: React.ReactNode; delay?: number; class
   );
 };
 
-/** Giant page title with a per-glyph rise. Plays on mount. */
-export const BigTitle: React.FC<{ text: string; sub?: string }> = ({ text, sub }) => {
-  const [play, setPlay] = useState(false);
-  useLayoutEffect(() => {
-    const t = setTimeout(() => setPlay(true), 30);
-    return () => clearTimeout(t);
-  }, []);
+/** Giant page title with interactive proximity glyphs, telemetry badge and F1 slash. */
+export const BigTitle: React.FC<{ text: string; sub?: string; tag?: string; live?: string }> = ({
+  text,
+  sub,
+  tag = 'SYSTEM PREFERENCES',
+  live = '25 Hz SYNC',
+}) => {
   return (
     <div className="pg-title">
-      <h1><SplitRise text={text} play={play} step={36} /></h1>
+      <div className="pg-top-meta">
+        <span className="tab">{tag}</span>
+        <span className="pg-live"><i /> {live}</span>
+      </div>
+      <h1 data-parallax="0.1">
+        <ProximityText text={text.toUpperCase()} radius={240} className="f1-i" />
+      </h1>
       {sub && <p>{sub}</p>}
     </div>
   );

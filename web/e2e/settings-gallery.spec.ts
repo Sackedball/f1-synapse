@@ -17,7 +17,13 @@ test.describe('Verify Settings, Gallery and Home pages', () => {
     await expect(page.locator('#display')).toBeVisible();
     await expect(page.locator('#access')).toBeVisible();
 
-    await page.screenshot({ path: path.join(process.cwd(), 'test-settings-page.png'), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), 'test-settings-page.png') });
+
+    // Scroll down to outro
+    const outro = page.locator('footer.outro');
+    await outro.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(process.cwd(), 'test-settings-page-bottom.png') });
   });
 
   test('Gallery page renders components', async ({ page }) => {

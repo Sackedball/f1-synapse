@@ -6,6 +6,7 @@ import { showSuccessToast, showErrorToast } from '@/utils/toast';
 import { PageNav, Reveal, BigTitle, Choice, Switch } from '@/motion/PageKit';
 import { useMagnetic } from '@/motion/useMagnetic';
 import { Count } from '@/motion/Kinetic';
+import { Spine, useScrollMotion } from '@/motion/Spine';
 
 const SECTIONS = [
   { id: 'storage', n: '01', t: 'STORAGE' },
@@ -20,10 +21,20 @@ const PBtn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'g
   return <button ref={ref} className={`pbtn ${tone ?? ''} ${className}`} {...r}><span data-magnetic-inner>{children}</span></button>;
 };
 
+const RailLink: React.FC<{ active: boolean; num: string; label: string; onClick: () => void }> = ({ active, num, label, onClick }) => {
+  const ref = useMagnetic<HTMLButtonElement>(0.35, 50);
+  return (
+    <button ref={ref} aria-current={active} data-cursor="link" onClick={onClick}>
+      <span data-magnetic-inner><b>{num}</b> {label}</span>
+    </button>
+  );
+};
+
 export const SettingsPage: React.FC = () => {
   const root = React.useRef<HTMLDivElement>(null);
   const [active, setActive] = useState('storage');
   const settings = useSettingsStore();
+  useScrollMotion(root);
 
   // Local form state for backend paths
   const [cacheLoc, setCacheLoc] = useState(settings.cacheLocation);
@@ -126,18 +137,24 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div ref={root} className="pg h-screen w-screen overflow-y-auto overflow-x-hidden">
+      <Spine scroller={root} />
       <PageNav section="SETTINGS" backTestId="settings-back-btn" />
       <nav className="pg-rail" aria-label="Sections">
         {SECTIONS.map((x) => (
-          <button key={x.id} aria-current={active === x.id} data-cursor="link"
-            onClick={() => root.current?.querySelector('#' + x.id)?.scrollIntoView({ behavior: 'smooth' })}>{x.n} {x.t}</button>
+          <RailLink
+            key={x.id}
+            active={active === x.id}
+            num={x.n}
+            label={x.t}
+            onClick={() => root.current?.querySelector('#' + x.id)?.scrollIntoView({ behavior: 'smooth' })}
+          />
         ))}
       </nav>
 
-      <BigTitle text="Settings" sub="Where the data lives, how it reads, and how it moves. Changes apply instantly." />
+      <BigTitle text="Settings" sub="Where the data lives, how it reads, and how it moves. Changes apply instantly." tag="SYSTEM CONFIG" live="25 Hz READY" />
 
       {/* 01 */}
-      <section id="storage" className="sec">
+      <section id="storage" className="sec" data-parallax="0.04">
         <div className="sec-k"><b>01</b>DATA & CACHE<div style={{ marginTop: 12 }}><Count to={cacheSizeMb} pad={1} /> MB ON DISK</div></div>
         <Reveal>
           <div className="field">
@@ -159,7 +176,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* 02 */}
-      <section id="display" className="sec">
+      <section id="display" className="sec" data-parallax="0.04">
         <div className="sec-k"><b>02</b>DISPLAY & UNITS</div>
         <Reveal>
           <div className="field">
@@ -186,7 +203,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* 03 */}
-      <section id="access" className="sec">
+      <section id="access" className="sec" data-parallax="0.04">
         <div className="sec-k"><b>03</b>ACCESSIBILITY</div>
         <Reveal>
           <div className="field field-row">
@@ -201,7 +218,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* 04 */}
-      <section id="keys" className="sec">
+      <section id="keys" className="sec" data-parallax="0.04">
         <div className="sec-k"><b>04</b>KEYBOARD</div>
         <Reveal>
           <div className="keys">
@@ -213,14 +230,21 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* 05 */}
-      <section id="about" className="sec" style={{ paddingBottom: '16vh' }}>
+      <section id="about" className="sec" data-parallax="0.04" style={{ paddingBottom: '10vh' }}>
         <div className="sec-k"><b>05</b>ABOUT</div>
         <Reveal>
-          <p style={{ font: '800 clamp(24px,3.4vw,52px)/1.05 var(--font-display)', textTransform: 'uppercase', letterSpacing: '-.02em', maxWidth: '18ch' }}>F1 Synapse v1.0.0</p>
+          <p style={{ font: '800 clamp(24px,3.4vw,52px)/1.05 var(--font-display)', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-.02em', maxWidth: '18ch' }}>F1 Synapse v1.0.0</p>
           <p className="hint" style={{ marginTop: 24 }}>Broadcast-quality telemetry replay and predictive race analytics. Data via FastF1 and OpenF1. Formula 1 and F1 are trademarks of Formula One Licensing B.V.; this is an unofficial viewer, not endorsed by Formula 1 companies.</p>
           <p className="hint" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, marginTop: 16 }}>F1SC Binary Stream 25 Hz · PixiJS v8 · Columnar buffers</p>
         </Reveal>
       </section>
+
+      <footer className="outro" aria-hidden>
+        <div className="checker outro-flag" />
+        <div className="outro-band" data-parallax="-0.8">
+          SYSTEM OPTIMAL<span>.</span> 25 HZ TELEMETRY<span>.</span> F1 SYNAPSE<span>.</span>
+        </div>
+      </footer>
 
       <Dialog open={showClearModal} onOpenChange={setShowClearModal}>
         <DialogContent>
