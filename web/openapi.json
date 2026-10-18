@@ -1285,6 +1285,11 @@
               }
             ],
             "title": "Contributions"
+          },
+          "overtakeCompleted": {
+            "type": "boolean",
+            "title": "Overtakecompleted",
+            "default": false
           }
         },
         "type": "object",

@@ -18,6 +18,7 @@ export interface BattleDetail {
   gapMeters: number | null;
   closingSpeedKmh: number | null;
   contributions: Record<string, number> | null;
+  overtakeCompleted?: boolean;
 }
 
 export interface MlStoreState {
@@ -158,6 +159,7 @@ export const useMlStore = create<MlStoreState>((set, get) => ({
               ? b.closingSpeedKmh[idx]
               : null,
           contributions: b.contributions || null,
+          overtakeCompleted: b.overtakeCompleted ?? false,
         };
       }
     }

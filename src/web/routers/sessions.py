@@ -236,6 +236,7 @@ async def get_session_ml(sid: str, response: Response):
             stints=session.stints,
             track=session.track,
             total_laps=session.meta.total_laps or 53,
+            events=session.events,
         )
     response.headers["Cache-Control"] = "public, max-age=86400, immutable"
     return session.ml_timelines

@@ -518,6 +518,11 @@ export interface components {
             contributions?: {
                 [key: string]: number;
             } | null;
+            /**
+             * Overtakecompleted
+             * @default false
+             */
+            overtakeCompleted: boolean;
         };
         /** MlDriverPitTimeline */
         MlDriverPitTimeline: {

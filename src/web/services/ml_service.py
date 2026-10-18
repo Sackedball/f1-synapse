@@ -31,12 +31,14 @@ from src.ml.overtake import OvertakeModel
 from src.ml.pit import PitModel
 from src.ml.tyre import TyreDegradationEstimator
 from src.web.schemas.ml import (
+    MlBattle,
     MlBattleSegment,
     MlDriverPitTimeline,
     MlDriverTyreTimeline,
     MlModelMetadata,
     MlTimelines,
 )
+from src.web.schemas.event import RaceEvent
 from src.web.schemas.track import TrackGeometry
 from src.web.schemas.laps import LapRow, Stint
 from src.web.services.frame_store import FrameStore, FPS, REFERENCE_SPEED_MPS
@@ -48,6 +50,9 @@ SAMPLE_HZ = 2.0  # 2 Hz = 0.5s resolution
 STEP_FRAMES = int(FPS / SAMPLE_HZ)  # 12 or 13 frames at 25 FPS
 MAX_BATTLE_GAP_SEC = 3.0
 MAX_BATTLE_GAP_METERS = MAX_BATTLE_GAP_SEC * REFERENCE_SPEED_MPS  # ~166 meters
+START_IGNORE_SEC = 8.0  # Ignore stationary grid-start sequence (first 8s)
+MIN_BATTLE_SAMPLES = 4  # Minimum 4 samples (~1.92s) to eliminate single-sample bursts
+MIN_BATTLE_PROB = 0.20  # Minimum peak likelihood threshold for battle persistence
 
 
 class MlService:
@@ -68,6 +73,10 @@ class MlService:
         track: Optional[TrackGeometry] = None,
         total_laps: int = 53,
         progress_cb: Optional[Callable[[str, float, str], None]] = None,
+        events: Optional[List[RaceEvent]] = None,
+        start_ignore_sec: float = START_IGNORE_SEC,
+        min_battle_samples: int = MIN_BATTLE_SAMPLES,
+        min_battle_prob: float = MIN_BATTLE_PROB,
     ) -> MlTimelines:
         """
         Computes all predictive timelines (overtake battles, pit anticipation, tyre wear)
@@ -132,8 +141,15 @@ class MlService:
         status_arr = channels["status"]
         track_status_arr = channels["trackStatus"]
         tyre_life_arr = channels["tyreLife"]
-        tyre_arr = channels["tyre"]
+        tyre_raw = channels["tyre"]
+        # Map sentinel 255 (unknown compound), out-of-range, negative, or NaN values to safe default 1 (Medium)
+        if np.issubdtype(tyre_raw.dtype, np.floating):
+            tyre_mask = (tyre_raw == 255) | (tyre_raw > 4) | (tyre_raw < 0) | np.isnan(tyre_raw)
+        else:
+            tyre_mask = (tyre_raw == 255) | (tyre_raw > 4) | (tyre_raw < 0)
+        tyre_arr = np.where(tyre_mask, np.uint8(1), tyre_raw.astype(np.uint8))
         lap_arr = channels["lap"]
+        start_ignore_frames = int(start_ignore_sec * FPS)
 
         # -------------------------------------------------------------
         # 2a. Vectorized Pit Anticipation (Fast multi-threaded CPU)
@@ -256,6 +272,10 @@ class MlService:
         all_ot_feature_rows: List[List[float]] = []
 
         for s_idx, f in enumerate(sample_indices):
+            # Eliminate grid-start phantom battles during stationary start sequence (< 8.0s)
+            if f < start_ignore_frames:
+                continue
+
             active_drvs = [
                 i for i in range(num_drivers)
                 if status_arr[i, f] == 0 and in_pit_arr[i, f] == 0
@@ -401,8 +421,84 @@ class MlService:
             ot_probs_all = np.array([], dtype=np.float32)
 
         # -------------------------------------------------------------
-        # 2c. State Machine to Reconstruct Battle Segments
+        # 2c. State Machine to Reconstruct Battle Segments & Outcomes
         # -------------------------------------------------------------
+        if events is None:
+            try:
+                from src.web.services.events_service import events_service
+                events = events_service.detect_overtakes(frame_store)
+            except Exception as ex:
+                logger.debug("Failed fallback overtake detection: %s", ex)
+                events = []
+
+        overtakes_by_pair: Dict[Tuple[str, str], List[float]] = {}
+        if events:
+            for e in events:
+                e_type = getattr(e, "type", None) or (e.get("type") if isinstance(e, dict) else None)
+                if e_type == "overtake":
+                    meta = getattr(e, "meta", None) or (e.get("meta") if isinstance(e, dict) else {})
+                    drivers = getattr(e, "drivers", None) or (e.get("drivers") if isinstance(e, dict) else [])
+                    t_attr = getattr(e, "t", None) if not isinstance(e, dict) else e.get("t")
+                    t_val = float(t_attr) if t_attr is not None else 0.0
+                    ot_drv = (
+                        meta.get("overtakingDriver")
+                        or meta.get("overtaking_driver")
+                        or meta.get("overtaking")
+                        or (drivers[0] if len(drivers) >= 2 else None)
+                    )
+                    df_drv = (
+                        meta.get("defendingDriver")
+                        or meta.get("defending_driver")
+                        or meta.get("defending")
+                        or (drivers[1] if len(drivers) >= 2 else None)
+                    )
+                    new_p = meta.get("newPosition") or meta.get("new_position")
+                    if new_p is not None and int(new_p) <= 0:
+                        continue
+                    if ot_drv and df_drv:
+                        overtakes_by_pair.setdefault((ot_drv, df_drv), []).append(t_val)
+
+        def _resolve_battle_outcome(battle_dict: dict) -> bool:
+            att_code = battle_dict["attacker"]
+            def_code = battle_dict["defender"]
+            b_t0 = battle_dict["t0"]
+            b_dt = battle_dict["dt"]
+            b_end = b_t0 + len(battle_dict["probabilities"]) * b_dt
+
+            # 1. Cross-reference with detected broadcast overtake events
+            if (att_code, def_code) in overtakes_by_pair:
+                for t_ot in overtakes_by_pair[(att_code, def_code)]:
+                    if (b_t0 - 1.0) <= t_ot <= (b_end + 3.0):
+                        return True
+
+            # 2. Check on-track position in the frames following battle conclusion
+            att_idx = drv_map.get(att_code)
+            def_idx = drv_map.get(def_code)
+            if att_idx is not None and def_idx is not None:
+                last_f = sample_indices[battle_dict["lastSampleIdx"]]
+                check_frames = min(last_f + int(2.5 * FPS), num_frames - 1)
+                if check_frames >= last_f:
+                    on_track = (
+                        (status_arr[att_idx, last_f:check_frames + 1] == 0)
+                        & (status_arr[def_idx, last_f:check_frames + 1] == 0)
+                        & (in_pit_arr[att_idx, last_f:check_frames + 1] == 0)
+                        & (in_pit_arr[def_idx, last_f:check_frames + 1] == 0)
+                    )
+                    pos_att = pos_arr[att_idx, last_f:check_frames + 1]
+                    pos_def = pos_arr[def_idx, last_f:check_frames + 1]
+                    valid_pos = (pos_att > 0) & (pos_def > 0)
+                    if np.sum(valid_pos) >= int(0.5 * FPS) or (valid_pos.size > 0 and valid_pos[-1]):
+                        att_ahead = (pos_att < pos_def) & valid_pos & on_track
+                    else:
+                        # Fallback to cumulative distance if position channels are absent or 0
+                        dist_att = dist_arr[att_idx, last_f:check_frames + 1]
+                        dist_def = dist_arr[def_idx, last_f:check_frames + 1]
+                        att_ahead = (dist_att > dist_def) & on_track
+
+                    if np.any(att_ahead) and (np.sum(att_ahead) >= int(0.5 * FPS) or (att_ahead[-1] and on_track[-1])):
+                        return True
+            return False
+
         active_battles: Dict[Tuple[str, str], dict] = {}
         completed_battles: List[MlBattleSegment] = []
 
@@ -454,6 +550,7 @@ class MlService:
             for pair_key, battle in active_battles.items():
                 if pair_key not in current_frame_pairs:
                     expl = self.overtake_model.explain(battle["explainDict"])
+                    is_completed = _resolve_battle_outcome(battle)
                     completed_battles.append(
                         MlBattleSegment(
                             attacker=battle["attacker"],
@@ -464,6 +561,7 @@ class MlService:
                             gap_meters=battle["gapMeters"],
                             closing_speed_kmh=battle["closingSpeedKmh"],
                             contributions=expl,
+                            overtake_completed=is_completed,
                         )
                     )
                     closed_keys.append(pair_key)
@@ -474,6 +572,7 @@ class MlService:
         # Finalize any remaining active battles
         for battle in active_battles.values():
             expl = self.overtake_model.explain(battle["explainDict"])
+            is_completed = _resolve_battle_outcome(battle)
             completed_battles.append(
                 MlBattleSegment(
                     attacker=battle["attacker"],
@@ -484,13 +583,14 @@ class MlService:
                     gap_meters=battle["gapMeters"],
                     closing_speed_kmh=battle["closingSpeedKmh"],
                     contributions=expl,
+                    overtake_completed=is_completed,
                 )
             )
 
-        # Filter out negligible noise battles (< 3 samples and peak prob < 0.15)
+        # Enforce battle persistence filter: eliminate single-sample and noise bursts
         filtered_battles = [
             b for b in completed_battles
-            if len(b.probabilities) >= 3 or max(b.probabilities or [0]) >= 0.15
+            if len(b.probabilities) >= min_battle_samples and max(b.probabilities or [0]) >= min_battle_prob
         ]
 
         # Format pit timelines

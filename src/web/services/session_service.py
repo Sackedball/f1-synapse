@@ -218,6 +218,7 @@ class SessionService:
                         stints=stints,
                         track=track,
                         total_laps=meta.total_laps or 53,
+                        events=events,
                     )
                     with open(dir_path / "ml.json", "wb") as f:
                         f.write(orjson.dumps(ml_timelines.model_dump(by_alias=True)))
@@ -345,6 +346,7 @@ class SessionService:
                     stints=stints,
                     track=track,
                     total_laps=meta.total_laps or 53,
+                    events=events,
                 )
                 with open(fixture_path / "ml.json", "wb") as f:
                     f.write(orjson.dumps(ml_timelines.model_dump(by_alias=True)))
@@ -545,6 +547,7 @@ class SessionService:
                 track=track,
                 total_laps=total_laps,
                 progress_cb=progress_cb,
+                events=events,
             )
             with open(dir_path / "ml.json", "wb") as f:
                 f.write(orjson.dumps(ml_timelines.model_dump(by_alias=True)))

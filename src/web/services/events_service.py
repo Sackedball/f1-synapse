@@ -449,6 +449,9 @@ class EventsService:
                                 int(lap[j, exact_f]) if lap is not None else 1
                             )
 
+                        if new_pos <= 0 or int(pos_i[exact_f]) <= 0 or int(pos_j[exact_f]) <= 0:
+                            continue
+
                         t_ot = round(exact_f / FPS, 2)
                         severity: EventSeverity = (
                             "major" if new_pos <= 5 else "minor"

@@ -24,6 +24,10 @@ class MlBattleSegment(CamelModel):
     gap_meters: Optional[List[float]] = Field(default=None, alias="gapMeters")
     closing_speed_kmh: Optional[List[float]] = Field(default=None, alias="closingSpeedKmh")
     contributions: Optional[Dict[str, float]] = None
+    overtake_completed: bool = Field(default=False, alias="overtakeCompleted")
+
+
+MlBattle = MlBattleSegment
 
 
 class MlDriverPitTimeline(CamelModel):

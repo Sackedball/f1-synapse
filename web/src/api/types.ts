@@ -14,6 +14,7 @@ export type EventType = components['schemas']['EventType'];
 export type EventSeverity = components['schemas']['EventSeverity'];
 export type MlTimelines = components['schemas']['MlTimelines'];
 export type MlBattleSegment = components['schemas']['MlBattleSegment'];
+export type MlBattle = MlBattleSegment;
 export type MlDriverPitTimeline = components['schemas']['MlDriverPitTimeline'];
 export type MlDriverTyreTimeline = components['schemas']['MlDriverTyreTimeline'];
 export type MlModelMetadata = components['schemas']['MlModelMetadata'];

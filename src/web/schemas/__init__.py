@@ -25,6 +25,7 @@ from src.web.schemas.job import JobEvent, JobStatus, JobStage
 from src.web.schemas.event import RaceEvent, EventType, EventSeverity
 from src.web.schemas.ml import (
     MlModelMetadata,
+    MlBattle,
     MlBattleSegment,
     MlDriverPitTimeline,
     MlDriverTyreTimeline,
@@ -70,6 +71,7 @@ __all__ = [
     "EventType",
     "EventSeverity",
     "MlModelMetadata",
+    "MlBattle",
     "MlBattleSegment",
     "MlDriverPitTimeline",
     "MlDriverTyreTimeline",
