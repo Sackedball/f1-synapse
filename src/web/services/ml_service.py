@@ -90,6 +90,11 @@ class MlService:
         lap_dicts = [l.model_dump(by_alias=True) for l in laps]
         stint_dicts = [s.model_dump(by_alias=True) for s in stints]
 
+        # Fit session-wide Bayesian tyre degradation model
+        laps_df = pd.DataFrame(lap_dicts)
+        if not laps_df.empty:
+            self.tyre_estimator.fit(laps_df)
+
         for code in driver_codes:
             t_data = self.tyre_estimator.compute_driver_tyre_timeline(
                 code, lap_dicts, stint_dicts, total_laps
@@ -100,6 +105,10 @@ class MlService:
                 degradation_s_per_lap=t_data["degradationSPerLap"],
                 pace_loss_s=t_data["paceLossS"],
                 projected_degradation=t_data["projectedDegradation"],
+                credible_interval_lower=t_data.get("credibleIntervalLower"),
+                credible_interval_upper=t_data.get("credibleIntervalUpper"),
+                projected_credible_interval_lower=t_data.get("projectedCredibleIntervalLower"),
+                projected_credible_interval_upper=t_data.get("projectedCredibleIntervalUpper"),
             )
 
         # Step 2: Sampling loop for Pit Anticipation and Overtake Battles

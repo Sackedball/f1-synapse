@@ -39,6 +39,10 @@ class MlDriverTyreTimeline(CamelModel):
     degradation_s_per_lap: List[float] = Field(alias="degradationSPerLap")
     pace_loss_s: List[float] = Field(alias="paceLossS")
     projected_degradation: List[float] = Field(alias="projectedDegradation")
+    credible_interval_lower: Optional[List[float]] = Field(default=None, alias="credibleIntervalLower")
+    credible_interval_upper: Optional[List[float]] = Field(default=None, alias="credibleIntervalUpper")
+    projected_credible_interval_lower: Optional[List[float]] = Field(default=None, alias="projectedCredibleIntervalLower")
+    projected_credible_interval_upper: Optional[List[float]] = Field(default=None, alias="projectedCredibleIntervalUpper")
 
 
 class MlTimelines(CamelModel):
