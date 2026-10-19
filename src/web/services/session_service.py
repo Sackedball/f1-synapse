@@ -395,16 +395,36 @@ class SessionService:
 
         enable_cache()
 
-        if progress_cb:
-            progress_cb("downloading", 0.20, f"Loading session {sid} from FastF1...")
+        fastf1_session = None
+        telemetry_data = None
+        frames = None
+        try:
+            if progress_cb:
+                progress_cb("downloading", 0.20, f"Loading session {sid} from FastF1...")
 
-        session = load_session(year, round_num, session_type)
+            fastf1_session = load_session(year, round_num, session_type)
+            if getattr(fastf1_session, "_laps", None) is None or fastf1_session.laps.empty:
+                raise ValueError(f"FastF1 returned empty laps for {sid}")
 
-        if progress_cb:
-            progress_cb("processing_drivers", 0.50, f"Extracting race telemetry for {session}...")
+            if progress_cb:
+                progress_cb("processing_drivers", 0.50, f"Extracting race telemetry for {fastf1_session}...")
 
-        telemetry_data = get_race_telemetry(session, session_type)
-        frames = telemetry_data["frames"]
+            telemetry_data = get_race_telemetry(fastf1_session, session_type)
+            frames = telemetry_data.get("frames") if telemetry_data else None
+            if not frames:
+                raise ValueError(f"FastF1 extracted 0 telemetry frames for {sid}")
+        except Exception as e:
+            logger.warning("FastF1 failed for session %s (%s). Attempting OpenF1 fallback...", sid, e)
+            if progress_cb:
+                progress_cb("downloading", 0.25, f"FastF1 unavailable. Falling back to OpenF1...")
+            return self._process_and_save_openf1(
+                year=year,
+                round_num=round_num,
+                session_type=session_type,
+                progress_cb=progress_cb,
+            )
+
+        session = fastf1_session
         driver_colors = telemetry_data.get("driver_colors", {})
         track_statuses = telemetry_data.get("track_statuses", [])
         total_laps = int(telemetry_data.get("total_laps", 0))
@@ -577,6 +597,111 @@ class SessionService:
 
         if progress_cb:
             progress_cb("ready", 1.0, "Session ready")
+
+        return loaded
+
+    def _process_and_save_openf1(
+        self,
+        year: int,
+        round_num: int,
+        session_type: str,
+        progress_cb=None,
+    ) -> LoadedSession:
+        """Process and save session data fetched via OpenF1 fallback."""
+        from src.openf1_data import load_openf1_session
+
+        sid = self.session_id(year, round_num, session_type)
+        data = load_openf1_session(year, round_num, session_type, progress_cb)
+
+        meta = data["meta"]
+        drivers = data["drivers"]
+        driver_codes = [d.code for d in drivers]
+        frames = data["frames"]
+        track = data["track"]
+        track_statuses = data["track_statuses"]
+        total_laps = data["total_laps"]
+        laps = data["laps"]
+        stints = data["stints"]
+        weather = data["weather"]
+        race_control = data["race_control"]
+
+        if progress_cb:
+            progress_cb("resampling", 0.80, "Converting OpenF1 frames to columnar store...")
+
+        frame_store = FrameStore.from_frames(
+            sid=sid,
+            frames=frames,
+            driver_codes=driver_codes,
+            track_statuses=track_statuses,
+            track=track,
+            total_laps=total_laps,
+        )
+
+        dir_path = config.web_data_dir / sid
+        dir_path.mkdir(parents=True, exist_ok=True)
+        frame_store.save(dir_path)
+
+        with open(dir_path / "meta.json", "wb") as f:
+            f.write(orjson.dumps(meta.model_dump(by_alias=True)))
+        with open(dir_path / "track.json", "wb") as f:
+            f.write(orjson.dumps(track.model_dump(by_alias=True)))
+        with open(dir_path / "laps.json", "wb") as f:
+            f.write(orjson.dumps([l.model_dump(by_alias=True) for l in laps]))
+        with open(dir_path / "stints.json", "wb") as f:
+            f.write(orjson.dumps([s.model_dump(by_alias=True) for s in stints]))
+        with open(dir_path / "weather.json", "wb") as f:
+            f.write(orjson.dumps([w.model_dump(by_alias=True) for w in weather]))
+        with open(dir_path / "race_control.json", "wb") as f:
+            f.write(orjson.dumps([rc.model_dump(by_alias=True) for rc in race_control]))
+
+        if progress_cb:
+            progress_cb("indexing_events", 0.88, "Indexing race events...")
+
+        events = events_service.detect_all(
+            frame_store=frame_store,
+            laps=laps,
+            stints=stints,
+            race_control=race_control,
+            total_laps=total_laps,
+        )
+        with open(dir_path / "events.json", "wb") as f:
+            f.write(orjson.dumps([e.model_dump(by_alias=True) for e in events]))
+
+        if progress_cb:
+            progress_cb("computing_ml", 0.94, "Computing ML predictive timelines...")
+
+        ml_timelines = None
+        try:
+            ml_timelines = ml_service.compute_ml_timelines(
+                sid=sid,
+                frame_store=frame_store,
+                laps=laps,
+                stints=stints,
+                track=track,
+                total_laps=total_laps,
+                progress_cb=progress_cb,
+                events=events,
+            )
+            with open(dir_path / "ml.json", "wb") as f:
+                f.write(orjson.dumps(ml_timelines.model_dump(by_alias=True)))
+        except Exception as ex:
+            logger.warning("Failed to compute ML timelines for OpenF1 session %s: %s", sid, ex)
+
+        loaded = LoadedSession(
+            meta=meta,
+            track=track,
+            frame_store=frame_store,
+            laps=laps,
+            stints=stints,
+            race_control=race_control,
+            weather=weather,
+            events=events,
+            ml_timelines=ml_timelines,
+        )
+        self._sessions[sid] = loaded
+
+        if progress_cb:
+            progress_cb("ready", 1.0, f"Session {sid} ready via OpenF1 fallback.")
 
         return loaded
 
