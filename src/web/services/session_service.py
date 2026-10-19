@@ -385,6 +385,14 @@ class SessionService:
                 progress_cb=progress_cb,
             )
 
+        if year >= 2026 and self.is_cached_on_disk(sid):
+            logger.info("Session %s is a simulated 2026 session already on disk. Serving from cache.", sid)
+            loaded = self.load_from_disk(sid)
+            if loaded is not None:
+                if progress_cb:
+                    progress_cb("ready", 1.0, f"Session {sid} ready from local cache.")
+                return loaded
+
         enable_cache()
 
         if progress_cb:

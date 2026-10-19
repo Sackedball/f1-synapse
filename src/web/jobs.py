@@ -98,19 +98,21 @@ class JobManager:
                 self._jobs[job_id] = job
                 return job
 
-            # 3. If not refreshing and already on disk
-            if not refresh and session_service.is_cached_on_disk(sid):
-                if session_type in ("Q", "SQ"):
-                    job_id = str(uuid.uuid4())
-                    job = Job(job_id=job_id, session_id=sid, stage="ready", progress=1.0, message="Session ready (from cache)")
-                    self._jobs[job_id] = job
-                    return job
-                loaded = session_service.load_from_disk(sid)
-                if loaded is not None:
-                    job_id = str(uuid.uuid4())
-                    job = Job(job_id=job_id, session_id=sid, stage="ready", progress=1.0, message="Session ready (from cache)")
-                    self._jobs[job_id] = job
-                    return job
+            # 3. If already on disk:
+            # For 2026 simulated sessions (which do not exist on live FastF1 servers) or when not refreshing, serve from disk
+            if session_service.is_cached_on_disk(sid):
+                if not refresh or year >= 2026:
+                    if session_type in ("Q", "SQ"):
+                        job_id = str(uuid.uuid4())
+                        job = Job(job_id=job_id, session_id=sid, stage="ready", progress=1.0, message="Session ready (from cache)")
+                        self._jobs[job_id] = job
+                        return job
+                    loaded = session_service.load_from_disk(sid)
+                    if loaded is not None:
+                        job_id = str(uuid.uuid4())
+                        job = Job(job_id=job_id, session_id=sid, stage="ready", progress=1.0, message="Session ready (from cache)")
+                        self._jobs[job_id] = job
+                        return job
 
             # 4. Start new background job
             job_id = str(uuid.uuid4())
@@ -135,6 +137,15 @@ class JobManager:
                     progress_cb=_progress_cb,
                 )
             except Exception as e:
+                # If downloading failed (e.g. future season or network unavailable),
+                # check if a valid on-disk session cache exists to fall back to!
+                if session_service.is_cached_on_disk(sid):
+                    logger.warning("Live download failed for %s (%s). Falling back to disk cache.", sid, e)
+                    loaded = session_service.load_from_disk(sid)
+                    if loaded is not None:
+                        job.update(loop, "ready", 1.0, "Session ready (loaded from cache)")
+                        return
+
                 logger.exception("Error processing session %s in background job %s: %s", sid, job_id, e)
                 job.update(loop, "error", 1.0, f"Failed to load session: {e}", error=str(e))
             finally:
