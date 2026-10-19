@@ -265,6 +265,7 @@ export const HomePage: React.FC = () => {
             <Row
               key={`${selectedSeason}-${ev.round}`}
               ev={ev}
+              season={selectedSeason}
               raceCached={isSessionCached(ev.round, 'R')}
               qualiCached={isSessionCached(ev.round, 'Q')}
               onHover={(on) => on && setHover(String(ev.round))}
@@ -320,21 +321,52 @@ const YearBtn: React.FC<{ year: number; active: boolean; onPick: () => void }> =
   );
 };
 
-const ActBtn: React.FC<{ label: string; cached: boolean; q?: boolean; onClick: () => void; testId: string }> = ({ label, cached, q, onClick, testId }) => {
+const ActBtn: React.FC<{
+  label: string;
+  cached: boolean;
+  disabled?: boolean;
+  title?: string;
+  q?: boolean;
+  onClick: () => void;
+  testId: string;
+}> = ({ label, cached, disabled = false, title, q, onClick, testId }) => {
   const ref = useMagnetic<HTMLButtonElement>(0.32, 70);
   return (
-    <button ref={ref} className={`act ${q ? 'q' : ''}`} onClick={onClick} data-testid={testId} aria-label={`${label} ${cached ? '(cached)' : '(download)'}`}>
-      <span data-magnetic-inner>{label}<span className="sector" aria-hidden><i className={cached ? (q ? 'on2' : 'on1') : ''} /><i className={cached ? (q ? 'on2' : 'on1') : ''} /><i className={cached ? (q ? 'on2' : 'on1') : ''} /></span></span>
+    <button
+      ref={ref}
+      className={`act ${q ? 'q' : ''} ${disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+      onClick={disabled ? undefined : onClick}
+      data-testid={testId}
+      title={title}
+      disabled={disabled}
+      aria-label={`${label} ${cached ? '(cached)' : disabled ? '(unrun)' : '(download)'}`}
+    >
+      <span data-magnetic-inner>
+        {label}
+        {!disabled && (
+          <span className="sector" aria-hidden>
+            <i className={cached ? (q ? 'on2' : 'on1') : ''} />
+            <i className={cached ? (q ? 'on2' : 'on1') : ''} />
+            <i className={cached ? (q ? 'on2' : 'on1') : ''} />
+          </span>
+        )}
+      </span>
     </button>
   );
 };
 
 const Row: React.FC<{
-  ev: RoundSummary; raceCached: boolean; qualiCached: boolean;
-  onHover: (on: boolean) => void; onLaunch: (type: string, refresh?: boolean) => void;
-}> = ({ ev, raceCached, qualiCached, onHover, onLaunch }) => {
+  ev: RoundSummary;
+  season: number;
+  raceCached: boolean;
+  qualiCached: boolean;
+  onHover: (on: boolean) => void;
+  onLaunch: (type: string, refresh?: boolean) => void;
+}> = ({ ev, season, raceCached, qualiCached, onHover, onLaunch }) => {
   const [ref, seen] = useInView<HTMLDivElement>(0.2);
   const intro = useMotionStore((s) => s.introDone);
+  const is2026 = season === 2026;
+
   return (
     <div
       ref={ref}
@@ -356,9 +388,26 @@ const Row: React.FC<{
         </div>
       </div>
       <div className="row-act">
-        <button className="refresh" onClick={() => onLaunch('R', true)} title="Force refresh and re-download session data">↻ RE-DOWNLOAD</button>
-        <ActBtn label="RACE" cached={raceCached} onClick={() => onLaunch('R')} testId={`launch-race-btn-${ev.round}`} />
-        <ActBtn label="QUALI" q cached={qualiCached} onClick={() => onLaunch('Q')} testId={`launch-quali-btn-${ev.round}`} />
+        {raceCached && (
+          <button className="refresh" onClick={() => onLaunch('R', true)} title="Force refresh and re-download session data">↻ RE-DOWNLOAD</button>
+        )}
+        <ActBtn
+          label={is2026 && !raceCached ? "UNRUN" : "RACE"}
+          cached={raceCached}
+          disabled={is2026 && !raceCached}
+          title={is2026 && !raceCached ? "2026 race has not taken place yet. Switch to 2024/2023/2022 to download real races." : undefined}
+          onClick={() => onLaunch('R')}
+          testId={`launch-race-btn-${ev.round}`}
+        />
+        <ActBtn
+          label={is2026 && !qualiCached ? "UNRUN" : "QUALI"}
+          q
+          cached={qualiCached}
+          disabled={is2026 && !qualiCached}
+          title={is2026 && !qualiCached ? "2026 qualifying has not taken place yet. Switch to 2024/2023/2022 to download real races." : undefined}
+          onClick={() => onLaunch('Q')}
+          testId={`launch-quali-btn-${ev.round}`}
+        />
       </div>
     </div>
   );
