@@ -86,7 +86,7 @@ def recompute_session(session_dir: Path):
         start_dist = (init_lap - 1) * track_len_m + along_m[0]
 
         delta = (np.diff(along_m) + track_len_m / 2.0) % track_len_m - (track_len_m / 2.0)
-        steps = np.clip(delta, 0.0, 50.0)
+        steps = np.clip(delta, -50.0, 50.0)
         cum_dist = np.concatenate(([start_dist], start_dist + np.cumsum(steps)))
 
         # Post-race cool-down in-lap distance freeze
