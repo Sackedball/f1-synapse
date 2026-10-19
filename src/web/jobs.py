@@ -114,25 +114,7 @@ class JobManager:
                         self._jobs[job_id] = job
                         return job
 
-            # 4. If year == 2026 and not on disk:
-            # Future 2026 races have not taken place yet and do not exist on FastF1 live timing.
-            if year == 2026 and not session_service.is_cached_on_disk(sid):
-                job_id = str(uuid.uuid4())
-                job = Job(
-                    job_id=job_id,
-                    session_id=sid,
-                    stage="error",
-                    progress=1.0,
-                    message=(
-                        f"The {year} season has not taken place yet. Live telemetry cannot be downloaded from FastF1 for unrun {year} sessions. "
-                        "Please select a pre-loaded 2026 demo (Round 1 Melbourne or Round 3 Suzuka), or switch to the 2024, 2023, or 2022 season tab to download any real race."
-                    ),
-                    error=f"Session {sid} not available online (future unrun race)",
-                )
-                self._jobs[job_id] = job
-                return job
-
-            # 5. Start new background job
+            # 4. Start new background job
             job_id = str(uuid.uuid4())
             job = Job(job_id=job_id, session_id=sid, stage="queued", progress=0.05, message="Job queued")
             self._jobs[job_id] = job
