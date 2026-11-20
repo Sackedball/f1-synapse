@@ -1,31 +1,52 @@
-# F1 Synapse
+<!-- The banner and pipeline SVGs come from docs/readme/build_art.py. Re-run it after editing. -->
 
-> **Broadcast-quality Formula 1 race replay, telemetry analysis, and predictive strategy engine.**
+<img width="100%" alt="F1 Synapse: Formula 1 race replay, telemetry and strategy. Every lap, 25 times a second." src="docs/readme/hero.svg">
 
-F1 Synapse delivers a high-performance web-based pit wall experience for Formula 1 races, featuring 60 fps WebGL circuit rendering, synchronized multi-driver telemetry graphs, automated qualifying session comparisons, and machine-learning-powered strategic forecasts.
+F1 Synapse replays real Formula 1 races lap by lap in the browser. Position, car data and timing all arrive at different rates, so the backend puts every channel on one 25 Hz clock first. That way the track map, timing tower, telemetry charts and predictions always describe the same instant.
 
----
+<p>
+  <a href="#quick-start"><b>Quick start</b></a> &nbsp;/&nbsp;
+  <a href="#how-it-works">How it works</a> &nbsp;/&nbsp;
+  <a href="#keyboard-controls">Keyboard</a> &nbsp;/&nbsp;
+  <a href="#project-structure">Project structure</a>
+</p>
 
-## Key Features
+<img width="100%" alt="F1 Synapse replaying the start of the Japanese Grand Prix at Suzuka: cars launch off the grid on the track map, the timing tower reorders as positions change, and the battle panel flags a DRS attack between Verstappen and Pérez" src="docs/readme/race-start.webp">
 
-- **60 FPS Hardware-Accelerated Circuit Canvas:** Real-time track visualization powered by PixiJS with dynamic camera tracking, driver follow modes, DRS activation bands, safety car indicators, and tire compound badges.
-- **Broadcast Timing Tower:** Instantaneous intervals and leader gaps computed from cumulative track distance with smooth FLIP reordering transitions and colorblind-safe compound indicators.
-- **Modular Dockview Analytics Workspace:** Desktop-grade multi-pane layout presets (`Race Engineer`, `Strategy`, `Telemetry`, `Broadcast`) featuring zero-allocation `uPlot` telemetry synchronization, tire stint history, and race control logs.
-- **Machine Learning Predictive Engine:** Precomputed 2 Hz predictive timelines for overtake probability, pit stop window detection, and Bayesian tire compound degradation forecasting.
-- **Qualifying Comparison Replay:** Distance-resampled mini-sector classification, lap delta traces ($\Delta t(x)$), and synchronized mini-map replay.
-- **Offline & Fixture Support:** Pre-packaged fixture datasets with full playback capability without network connection.
-- **Accessibility & Responsive Design:** WCAG 2.1 AA compliant (0 serious/critical axe violations), high-contrast tokens, reduced-motion overrides, and responsive scaling from 1366×768 to 3440×1440 ultrawide.
+<sub>The first seconds of the 2024 Japanese GP at Suzuka, replayed at 1× from the offline fixture that ships with the repo (it appears as 2026 Round 3 in the app).</sub>
 
----
+## What it does
 
-## Quick Start (One-Command Launch)
+- **Race replay.** A PixiJS v8 track canvas with a follow camera, DRS zones, safety car indicators and tyre compound badges.
+- **Timing tower.** Intervals and leader gaps worked out from each car's cumulative race distance, with animated reordering as positions change.
+- **Analysis workspace.** Dockview layouts with presets (`Race Engineer`, `Strategy`, `Telemetry`, `Broadcast`) and synced uPlot telemetry, tyre stints and race-control messages.
+- **Predictions.** Overtake probability, pit-window timing and Bayesian tyre degradation. Every prediction is marked **est.** in the UI.
+- **Qualifying comparison.** Up to four laps lined up by distance, with mini-sector winners, a lap-delta trace and a synced mini-map.
+- **Works offline.** A fixture dataset lets the whole app run without a network connection.
+- **Accessible.** WCAG 2.1 AA (0 serious or critical axe violations), high-contrast tokens, reduced-motion support, and layouts from 1366×768 up to 3440×1440.
+
+<img width="100%" alt="Qualifying comparison: Verstappen, Pérez and Norris laps play side by side; a cursor sweeps the speed, delta, gear and throttle and brake traces while the car moves round the Suzuka mini-map" src="docs/readme/quali-lap.webp">
+
+<sub>Qualifying comparison at 4×. This view uses generated test telemetry from <code>scripts/generate_quali_telemetry.py</code>.</sub>
+
+## How it works
+
+<img width="100%" alt="Pipeline: ingest FastF1 timing feeds, resample every channel onto one 25 Hz clock, predict with tyre, overtake and pit models, stream F1SC binary chunks through FastAPI, render with PixiJS, uPlot and Dockview" src="docs/readme/pipeline.svg">
+
+1. **Ingest.** `src/f1_data.py` loads a session with FastF1 and extracts each driver's telemetry in a pool of up to four processes.
+2. **Resample.** Every channel is interpolated onto one 25 Hz timeline (Δt = 0.04 s). Positions are projected onto the track centerline with a k-d tree, and race distance is kept monotonic so the order never jitters.
+3. **Predict.** A Bayesian tyre model tracks degradation, a LightGBM model scores overtake chances, and an XGBoost model estimates pit windows.
+4. **Stream.** `src/web/services/frame_store.py` packs frames into `F1SC` binary chunks of 1,500 frames (60 s each), served by FastAPI.
+5. **Render.** In the browser, `FrameStore.ts` samples any moment without allocating, PixiJS draws the track, and uPlot and Dockview drive the analysis panels.
+
+## Quick start
 
 ### Windows
-Double-click `run.bat` or run in terminal:
+Double-click `run.bat` or run it in a terminal:
 ```cmd
 run.bat
 ```
-*Automatically sets up the Python virtual environment, installs requirements, compiles the frontend if needed, and opens your default browser.*
+It sets up the Python virtual environment, installs requirements, builds the frontend if needed, and opens your browser.
 
 ### Linux / macOS
 ```bash
@@ -33,33 +54,32 @@ chmod +x run.sh
 ./run.sh
 ```
 
-### Direct Python Execution
+### Run Python directly
 ```bash
 python main.py
 ```
 Options:
-- `python main.py --no-browser` — Start server without launching the browser window.
-- `python main.py --port 8080` — Bind to a custom port.
-- `python main.py --year 2024 --round 4 --session R` — Deep-link directly into a specific Grand Prix session.
-- `python main.py --cli` — Interactive terminal menu for session selection.
+- `python main.py --no-browser`: start the server without opening a browser window.
+- `python main.py --port 8080`: bind to a custom port.
+- `python main.py --year 2024 --round 4 --session R`: open a specific Grand Prix session directly.
+- `python main.py --cli`: pick a session from an interactive terminal menu.
 
----
-
-## Developer Workflow
+<details>
+<summary><b>Developer workflow</b></summary>
 
 ### Backend (Python / FastAPI)
 ```bash
-# Create and activate virtual environment
+# Create and activate a virtual environment
 python -m venv venv
 venv\Scripts\activate  # Windows: venv\Scripts\activate | Unix: source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run backend unit & integration tests
+# Run backend unit and integration tests
 pytest tests/web/
 
-# Start FastAPI dev server
+# Start the FastAPI server
 python main.py
 ```
 
@@ -70,46 +90,47 @@ cd web
 # Install dependencies
 npm install
 
-# Start Vite dev server with Hot Module Replacement (HMR)
+# Start the Vite dev server with hot module replacement
 npm run dev
 
 # Run Vitest unit tests
 npm test
 
-# Typecheck and linting
+# Typecheck and lint
 npm run typecheck
 npm run lint
 
-# Production bundle build (outputs to web/dist/)
+# Production build (outputs to web/dist/)
 npm run build
 
-# Playwright E2E and visual tests
+# Playwright end-to-end and visual tests
 npx playwright test
 ```
 
----
+</details>
 
-## Keyboard Controls & Navigation
+## Keyboard controls
 
 | Key | Action |
 |---|---|
-| `Space` | Play / Pause replay toggle |
-| `←` / `→` | Step playback ±10 seconds |
-| `Shift` + `←` / `→` | Step playback ±1 whole lap |
-| `↑` / `↓` | Adjust playback speed rate (0.25× – 32×) |
-| `1` – `4` | Direct speed jump (1×, 2×, 4×, 8×) |
-| `R` | Restart playback from lap 1 |
-| `D` | Toggle DRS detection & activation zones |
-| `B` | Toggle timeline progress bar |
-| `L` | Cycle driver labels (Code / Number / Off) |
-| `P` | Export high-resolution PNG composite snapshot |
-| `Ctrl` + `K` | Open Command Palette |
-| `H` / `?` | Open Keyboard Shortcuts & Help modal |
-| `Esc` | Clear driver selection or close open dialogs |
+| `Space` | Play / pause |
+| `←` / `→` | Step ±10 seconds |
+| `Shift` + `←` / `→` | Step ±1 lap |
+| `↑` / `↓` | Change playback speed (0.5× – 32×) |
+| `1` – `4` | Jump to 1×, 2×, 4× or 8× |
+| `R` | Restart from lap 1 |
+| `D` | Toggle DRS detection and activation zones |
+| `B` | Toggle the timeline progress bar |
+| `L` | Cycle driver labels (code / number / off) |
+| `P` | Export a high-resolution PNG snapshot |
+| `Ctrl` + `K` | Open the command palette |
+| `H` / `?` | Open keyboard shortcuts and help |
+| `Esc` | Clear the driver selection or close dialogs |
 
----
+## Project structure
 
-## Project Structure
+<details>
+<summary>Show the file tree</summary>
 
 ```
 f1-race-replay/
@@ -146,9 +167,9 @@ f1-race-replay/
 └── docs/web-revamp/            # Design system, API contract, and phase specifications
 ```
 
----
+</details>
 
-## Data Attribution & Machine Learning Caveats
+## Data and model notes
 
-- **Timing & Telemetry Data:** Telemetry data is fetched from the [FastF1](https://github.com/theOehrly/Fast-F1) Python library using publicly accessible official timing feeds. Formula 1, F1, and related marks are trademarks of Formula One Licensing B.V.
-- **Predictive ML Models:** Overtake and pit prediction models are trained on physics-based race simulation datasets. All predictive percentages are displayed with explicit **"est."** indicators and reflect statistical approximations rather than deterministic outcomes.
+- **Timing and telemetry** come from the [FastF1](https://github.com/theOehrly/Fast-F1) Python library, which reads the publicly available official timing feeds. Formula 1, F1 and related marks are trademarks of Formula One Licensing B.V. This project is not affiliated with Formula 1.
+- **Predictions** come from overtake and pit models trained on physics-based race simulation datasets. Every predicted percentage is marked **est.** and is a statistical estimate, not a certainty.
