@@ -31,3 +31,18 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Docs, notes, reports and agent files: kept locally, not part of the code repo.
+# (README.md and the assets it embeds in docs/readme/ stay tracked.)
+docs/*
+!docs/readme/
+*.md
+!/README.md
+*.pdf
+*.docx
+blackbook_figures/
+reports/
+presentation/
+web/mockups/
+.claude/
+.cursor/
