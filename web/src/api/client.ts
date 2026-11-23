@@ -8,9 +8,90 @@ import {
   WeatherSample,
   HealthResponse,
   RaceEvent,
+  MlTimelines,
+  RoundSummary,
+  CacheStatusResponse,
+  SessionLoadRequest,
+  SessionLoadResponse,
+  JobStatus,
+  QualiResultsResponse,
+  QualiTelemetryResponse,
+  SettingsResponse,
+  SettingsUpdateRequest,
+  ClearCacheResponse,
 } from './types';
 
+/* ───────────── Static demo mode (hosted build, no Python backend) ─────────────
+ * Built with VITE_DEMO_MODE=1. Every request is served from files exported by
+ * scripts/export_static_demo.py into public/demo/<sid>/, listed in demo/index.json.
+ */
+export interface DemoSession {
+  sessionId: string;
+  year: number;
+  round: number;
+  type: string;
+  eventName: string;
+  circuitName: string;
+  country: string;
+  date: string;
+  totalLaps: number;
+  numChunks: number;
+}
+
+export function isDemoMode(): boolean {
+  return import.meta.env.VITE_DEMO_MODE === '1';
+}
+
+let demoManifest: Promise<DemoSession[]> | null = null;
+export function getDemoSessions(): Promise<DemoSession[]> {
+  if (!demoManifest) {
+    demoManifest = fetch('/demo/index.json')
+      .then((r) => (r.ok ? r.json() : { sessions: [] }))
+      .then((j: { sessions?: DemoSession[] }) => j.sessions ?? [])
+      .catch(() => {
+        demoManifest = null;
+        return [];
+      });
+  }
+  return demoManifest;
+}
+
+export const DEMO_UNAVAILABLE_MESSAGE =
+  'This session is not part of the online demo. Processing new sessions needs the local backend ' +
+  '(GPU + FastF1); pick one of the preloaded races marked as cached.';
+
+const DEMO_SETTINGS: SettingsResponse = {
+  cacheLocation: '(hosted demo, read-only)',
+  computedDataLocation: 'demo/',
+  cacheSizeBytes: 0,
+  cacheSizeMb: 0,
+  cacheExists: true,
+  dataExists: true,
+};
+
+/** Fetches a binary or JSON payload that may be stored gzipped (".gz") on the static host. */
+export async function fetchMaybeGzip(path: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  const res = await fetch(path, { signal });
+  if (!res.ok) throw new ApiError(res.status, `Failed to load ${path}`);
+  const buf = await res.arrayBuffer();
+  const b = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+  // Host may already have decoded it (Content-Encoding: gzip) — only gunzip real gzip bytes.
+  if (b[0] === 0x1f && b[1] === 0x8b) {
+    const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new Response(stream).arrayBuffer();
+  }
+  return buf;
+}
+
+/** Base URL for static session files, or null when talking to the live API. */
+function staticBase(sid: string): string | null {
+  if (isDemoMode()) return `/demo/${encodeURIComponent(sid)}`;
+  if (isFixtureMode()) return `/fixtures/${getFixtureName()}`;
+  return null;
+}
+
 export function isFixtureMode(): boolean {
+  if (isDemoMode()) return true;
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
   return params.has('fixture') || !!window.localStorage.getItem('f1_fixture');
@@ -36,6 +117,23 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+type QualiTelemetryFile = Record<string, Record<string, QualiTelemetryResponse>>;
+const qualiTelemetryCache = new Map<string, Promise<QualiTelemetryFile>>();
+
+/** All drivers' quali telemetry in one static file (gzipped in demo mode); fetched once per session. */
+function loadAllQualiTelemetry(sid: string, signal?: AbortSignal): Promise<QualiTelemetryFile> {
+  const url = isDemoMode()
+    ? `/demo/${encodeURIComponent(sid)}/quali_telemetry.json.gz`
+    : `/fixtures/${getFixtureName()}/quali_telemetry.json`;
+  let p = qualiTelemetryCache.get(url);
+  if (!p) {
+    p = fetchMaybeGzip(url, signal).then((buf) => JSON.parse(new TextDecoder().decode(buf)));
+    p.catch(() => qualiTelemetryCache.delete(url));
+    qualiTelemetryCache.set(url, p);
+  }
+  return p;
+}
+
 export const api = {
   async getHealth(signal?: AbortSignal): Promise<HealthResponse> {
     if (isFixtureMode()) {
@@ -45,70 +143,69 @@ export const api = {
   },
 
   async getSessionMeta(sid: string, signal?: AbortSignal): Promise<SessionMeta> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<SessionMeta>(`/fixtures/${fixture}/meta.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<SessionMeta>(`${base}/meta.json`, signal);
     return request<SessionMeta>(`/api/sessions/${encodeURIComponent(sid)}/meta`, signal);
   },
 
   async getTrackGeometry(sid: string, signal?: AbortSignal): Promise<TrackGeometry> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<TrackGeometry>(`/fixtures/${fixture}/track.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<TrackGeometry>(`${base}/track.json`, signal);
     return request<TrackGeometry>(`/api/sessions/${encodeURIComponent(sid)}/track`, signal);
   },
 
   async getLaps(sid: string, signal?: AbortSignal): Promise<LapRow[]> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<LapRow[]>(`/fixtures/${fixture}/laps.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<LapRow[]>(`${base}/laps.json`, signal);
     return request<LapRow[]>(`/api/sessions/${encodeURIComponent(sid)}/laps`, signal);
   },
 
   async getStints(sid: string, signal?: AbortSignal): Promise<Stint[]> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<Stint[]>(`/fixtures/${fixture}/stints.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<Stint[]>(`${base}/stints.json`, signal);
     return request<Stint[]>(`/api/sessions/${encodeURIComponent(sid)}/stints`, signal);
   },
 
   async getRaceControl(sid: string, signal?: AbortSignal): Promise<RaceControlMessage[]> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<RaceControlMessage[]>(`/fixtures/${fixture}/race_control.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<RaceControlMessage[]>(`${base}/race_control.json`, signal);
     return request<RaceControlMessage[]>(`/api/sessions/${encodeURIComponent(sid)}/race-control`, signal);
   },
 
   async getWeather(sid: string, signal?: AbortSignal): Promise<WeatherSample[]> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<WeatherSample[]>(`/fixtures/${fixture}/weather.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<WeatherSample[]>(`${base}/weather.json`, signal);
     return request<WeatherSample[]>(`/api/sessions/${encodeURIComponent(sid)}/weather`, signal);
   },
 
   async getEvents(sid: string, signal?: AbortSignal): Promise<RaceEvent[]> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<RaceEvent[]>(`/fixtures/${fixture}/events.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<RaceEvent[]>(`${base}/events.json`, signal);
     return request<RaceEvent[]>(`/api/sessions/${encodeURIComponent(sid)}/events`, signal);
   },
 
   async getMlTimelines(sid: string, signal?: AbortSignal): Promise<MlTimelines> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<MlTimelines>(`/fixtures/${fixture}/ml.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<MlTimelines>(`${base}/ml.json`, signal);
     return request<MlTimelines>(`/api/sessions/${encodeURIComponent(sid)}/ml`, signal);
   },
 
   async getSeasonSchedule(year: number, signal?: AbortSignal): Promise<RoundSummary[]> {
+    if (isDemoMode()) {
+      const rounds = new Map<number, RoundSummary>();
+      for (const d of await getDemoSessions()) {
+        if (d.year !== year || rounds.has(d.round)) continue;
+        rounds.set(d.round, {
+          round: d.round,
+          name: d.eventName,
+          country: d.country,
+          location: d.circuitName,
+          date: d.date,
+          sessions: ['Qualifying', 'Race'],
+        });
+      }
+      return [...rounds.values()].sort((a, b) => a.round - b.round);
+    }
     if (isFixtureMode()) {
       return [
         {
@@ -125,6 +222,19 @@ export const api = {
   },
 
   async getCacheStatus(year?: number, signal?: AbortSignal): Promise<CacheStatusResponse> {
+    if (isDemoMode()) {
+      const all = (await getDemoSessions()).filter((d) => year === undefined || d.year === year);
+      const roundNums = [...new Set(all.map((d) => d.round))];
+      return {
+        rounds: roundNums.map((round) => ({
+          round,
+          sessions: ['FP1', 'FP2', 'FP3', 'Q', 'R'].map((type) => ({
+            type,
+            cached: all.some((d) => d.round === round && d.type === type),
+          })),
+        })),
+      };
+    }
     if (isFixtureMode()) {
       return {
         rounds: [
@@ -146,6 +256,14 @@ export const api = {
   },
 
   async loadSession(req: SessionLoadRequest, signal?: AbortSignal): Promise<SessionLoadResponse> {
+    if (isDemoMode()) {
+      const type = req.type ?? 'R';
+      const hit = (await getDemoSessions()).find(
+        (d) => d.year === req.year && d.round === req.round && d.type === type,
+      );
+      if (!hit) throw new Error(DEMO_UNAVAILABLE_MESSAGE);
+      return { jobId: 'ready', sessionId: hit.sessionId };
+    }
     const res = await fetch('/api/sessions/load', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -160,14 +278,13 @@ export const api = {
   },
 
   async getJobStatus(jobId: string, signal?: AbortSignal): Promise<JobStatus> {
+    if (isDemoMode()) throw new Error(DEMO_UNAVAILABLE_MESSAGE);
     return request<JobStatus>(`/api/jobs/${encodeURIComponent(jobId)}`, signal);
   },
 
   async getQualiResults(sid: string, signal?: AbortSignal): Promise<QualiResultsResponse> {
-    if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      return request<QualiResultsResponse>(`/fixtures/${fixture}/quali_results.json`, signal);
-    }
+    const base = staticBase(sid);
+    if (base) return request<QualiResultsResponse>(`${base}/quali_results.json`, signal);
     return request<QualiResultsResponse>(`/api/sessions/${encodeURIComponent(sid)}/quali/results`, signal);
   },
 
@@ -178,11 +295,7 @@ export const api = {
     signal?: AbortSignal,
   ): Promise<QualiTelemetryResponse> {
     if (isFixtureMode()) {
-      const fixture = getFixtureName();
-      const allTelem = await request<Record<string, Record<string, QualiTelemetryResponse>>>(
-        `/fixtures/${fixture}/quali_telemetry.json`,
-        signal,
-      );
+      const allTelem = await loadAllQualiTelemetry(sid, signal);
       const drv = allTelem[driver];
       if (!drv || !drv[segment]) {
         throw new ApiError(404, { error: { code: 'driver_not_found', message: `Driver ${driver} in ${segment} not found` } });
@@ -200,6 +313,7 @@ export const api = {
   },
 
   async getSettings(signal?: AbortSignal): Promise<SettingsResponse> {
+    if (isDemoMode()) return DEMO_SETTINGS;
     if (isFixtureMode()) {
       return {
         cacheLocation: '.fastf1-cache',
@@ -214,6 +328,7 @@ export const api = {
   },
 
   async updateSettings(req: SettingsUpdateRequest, signal?: AbortSignal): Promise<SettingsResponse> {
+    if (isDemoMode()) throw new Error('Storage settings are read-only in the online demo.');
     const res = await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -228,6 +343,7 @@ export const api = {
   },
 
   async clearCache(signal?: AbortSignal): Promise<ClearCacheResponse> {
+    if (isDemoMode()) throw new Error('The online demo has no cache to clear.');
     const res = await fetch('/api/settings/cache/clear', {
       method: 'POST',
       signal,

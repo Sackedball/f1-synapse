@@ -5,8 +5,13 @@ import path from 'path';
 import fs from 'fs';
 
 function fixturesMiddleware() {
+  let isDemoBuild = false;
   return {
     name: 'serve-fixtures',
+    configResolved(config: any) {
+      // The hosted demo reads public/demo/*, so the golden test fixtures stay out of its dist.
+      isDemoBuild = config.mode === 'demo';
+    },
     configureServer(server: any) {
       server.middlewares.use('/fixtures', (req: any, res: any, next: any) => {
         const cleanUrl = (req.url || '').split('?')[0].replace(/^\/+/, '');
@@ -25,6 +30,7 @@ function fixturesMiddleware() {
       });
     },
     closeBundle() {
+      if (isDemoBuild) return;
       // Copy fixtures to dist/fixtures during build
       const srcDir = path.join(__dirname, 'fixtures');
       const distDir = path.join(__dirname, 'dist', 'fixtures');

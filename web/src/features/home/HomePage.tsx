@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Wordmark } from '@/components';
-import { api } from '@/api/client';
+import { api, isDemoMode, DEMO_UNAVAILABLE_MESSAGE } from '@/api/client';
+import { toast } from 'sonner';
 import { RoundSummary, CacheStatusResponse } from '@/api/types';
 import { getRecentSessions, RecentSession } from './recents';
 import { getCircuitForEvent } from './circuits';
@@ -15,7 +16,9 @@ import { Spine, useScrollMotion } from '@/motion/Spine';
 import { CircuitStage } from './CircuitStage';
 import './home.css';
 
-const SEASONS = [2026, 2025, 2024, 2023, 2022];
+const DEMO = isDemoMode();
+// The hosted demo only ships preloaded 2026 sessions; the full calendar needs the local backend.
+const SEASONS = DEMO ? [2026] : [2026, 2025, 2024, 2023, 2022];
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -140,6 +143,10 @@ export const HomePage: React.FC = () => {
     eventName: string,
     refresh = false,
   ) => {
+    if (DEMO && !isSessionCached(round, type)) {
+      toast.info(DEMO_UNAVAILABLE_MESSAGE);
+      return;
+    }
     preloadWorkspace();
     setActiveLoad({
       year,
@@ -248,7 +255,7 @@ export const HomePage: React.FC = () => {
       <section className="index">
         <div className="idx-head">
           <span>{selectedSeason} / <Count key={selectedSeason + ':' + schedule.length} to={schedule.length} /> ROUNDS</span>
-          <span>● CACHED &nbsp; ○ NEEDS DOWNLOAD</span>
+          <span>{DEMO ? '● PRELOADED · ONLINE DEMO' : <>● CACHED &nbsp; ○ NEEDS DOWNLOAD</>}</span>
         </div>
 
         {isLoading ? (
@@ -356,7 +363,7 @@ const Row: React.FC<{
         </div>
       </div>
       <div className="row-act">
-        {raceCached && (
+        {raceCached && !DEMO && (
           <button className="refresh" onClick={() => onLaunch('R', true)} title="Force refresh and re-download session data">↻ RE-DOWNLOAD</button>
         )}
         <ActBtn label="RACE" cached={raceCached} onClick={() => onLaunch('R')} testId={`launch-race-btn-${ev.round}`} />
